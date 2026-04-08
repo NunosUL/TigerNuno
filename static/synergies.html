@@ -186,6 +186,117 @@
       padding: 0.1rem 0.38rem;
     }
 
+    /* ── Payload / data-flow section ── */
+    .dataflow { margin-bottom: 3rem; }
+
+    .stage-flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .stage-row {
+      display: flex;
+      align-items: stretch;
+      gap: 1rem;
+      position: relative;
+    }
+    .stage-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 2.2rem;
+      flex-shrink: 0;
+      padding-top: 0.5rem;
+    }
+    .stage-dot {
+      width: 0.75rem;
+      height: 0.75rem;
+      border-radius: 50%;
+      border: 2px solid;
+      background: var(--bg);
+      flex-shrink: 0;
+      margin-top: 0.75rem;
+    }
+    .stage-line {
+      width: 2px;
+      flex: 1;
+      margin-top: 0.2rem;
+      margin-bottom: 0;
+      min-height: 1.5rem;
+    }
+    .stage-block {
+      flex: 1;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-bottom: 0.6rem;
+    }
+    .stage-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.55rem 0.9rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .stage-header .sh-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+    .stage-header .sh-sub {
+      font-size: 0.68rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    .stage-pre {
+      background: #080c10;
+      padding: 0.8rem 1rem;
+      margin: 0;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.71rem;
+      line-height: 1.65;
+      color: #cdd9e5;
+    }
+
+    /* stage colour variants */
+    .stage-orange .stage-header { background: rgba(240,136,62,0.07); }
+    .stage-orange .stage-dot    { border-color: var(--orange); }
+    .stage-orange .stage-line   { background: linear-gradient(var(--orange), var(--purple)); }
+    .stage-orange .sh-label     { color: var(--orange); }
+
+    .stage-purple .stage-header { background: rgba(163,113,247,0.07); }
+    .stage-purple .stage-dot    { border-color: var(--purple); }
+    .stage-purple .stage-line   { background: linear-gradient(var(--purple), var(--accent)); }
+    .stage-purple .sh-label     { color: var(--purple); }
+
+    .stage-blue .stage-header   { background: rgba(47,129,247,0.07); }
+    .stage-blue .stage-dot      { border-color: var(--accent); }
+    .stage-blue .stage-line     { background: linear-gradient(var(--accent), var(--success)); }
+    .stage-blue .sh-label       { color: var(--accent); }
+
+    .stage-green .stage-header  { background: rgba(63,185,80,0.07); }
+    .stage-green .stage-dot     { border-color: var(--success); }
+    .stage-green .stage-line    { background: linear-gradient(var(--success), var(--teal)); }
+    .stage-green .sh-label      { color: var(--success); }
+
+    .stage-teal .stage-header   { background: rgba(57,197,207,0.07); }
+    .stage-teal .stage-dot      { border-color: var(--teal); }
+    .stage-teal .stage-line     { background: linear-gradient(var(--teal), var(--purple)); }
+    .stage-teal .sh-label       { color: var(--teal); }
+
+    .stage-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    @media (max-width: 680px) { .stage-split { grid-template-columns: 1fr; } }
+
+    .jk { color: #79c0ff; }
+    .js { color: #a5d6ff; }
+    .jn { color: #d2a8ff; }
+    .jc { color: #6e7681; font-style: italic; }
+    .jh { color: #ffa657; }
+
     /* ── Key insight banner ── */
     .insight {
       background: linear-gradient(135deg, #0d1f38, #1a1626);
@@ -493,6 +604,166 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ── Data at each stage ── -->
+    <p class="section-label">Data at each stage of the pipeline</p>
+    <div class="dataflow">
+      <div class="stage-flow">
+
+        <!-- Stage 1: Crawler output (JSONL page record) -->
+        <div class="stage-row">
+          <div class="stage-connector">
+            <div class="stage-dot" style="border-color:var(--orange)"></div>
+            <div class="stage-line" style="background:linear-gradient(var(--orange),var(--purple))"></div>
+          </div>
+          <div class="stage-block stage-orange">
+            <div class="stage-header">
+              <span>📄</span>
+              <span class="sh-label">① Page Record</span>
+              <span class="sh-sub">crawler.py → blob storage · one JSON object per wiki page</span>
+            </div>
+            <pre class="stage-pre">{
+  <span class="jk">"path"</span>:       <span class="js">"/Documentation/Setup"</span>,
+  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
+  <span class="jk">"markdown"</span>:   <span class="js">"# Setup Guide\n\nTo install the project, run `npm install` from\nthe root directory. Ensure Node.js 18+ is installed first.\n\n## Prerequisites\n\n- Node.js 18+\n- Azure CLI\n- Docker Desktop..."</span>,
+  <span class="jk">"html"</span>:       <span class="js">"&lt;h1&gt;Setup Guide&lt;/h1&gt;&lt;p&gt;To install the project...&lt;/p&gt;"</span>,
+  <span class="jk">"links"</span>:      [<span class="js">"/Documentation/Prerequisites"</span>, <span class="js">"/Guides/Deploy"</span>],
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
+}</pre>
+          </div>
+        </div>
+
+        <!-- Stage 2: After chunking (pre-embed) -->
+        <div class="stage-row">
+          <div class="stage-connector">
+            <div class="stage-dot" style="border-color:var(--purple)"></div>
+            <div class="stage-line" style="background:linear-gradient(var(--purple),var(--accent))"></div>
+          </div>
+          <div class="stage-block stage-purple">
+            <div class="stage-header">
+              <span>✂️</span>
+              <span class="sh-label">② Chunk (pre-embedding)</span>
+              <span class="sh-sub">LangChain RecursiveCharacterTextSplitter · 1000 chars / 150 overlap</span>
+            </div>
+            <pre class="stage-pre">{
+  <span class="jk">"id"</span>:         <span class="jh">"documentation_setup__0"</span>,  <span class="jc">// deterministic: "{safe_path}__{chunk_index}"</span>
+  <span class="jk">"text"</span>:       <span class="js">"# Setup Guide\n\nTo install the project, run `npm install` from\nthe root directory. Ensure Node.js 18+ is installed first.\n\n## Prerequisites\n\n- Node.js 18+\n- Azure CLI\n- Docker Desktop..."</span>,
+  <span class="jk">"path"</span>:       <span class="js">"/Documentation/Setup"</span>,
+  <span class="jk">"url"</span>:        <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
+  <span class="jc">// no "embedding" field yet — added by step 3</span>
+}
+
+<span class="jc">// a 3000-char page might produce 3–4 overlapping chunks like this:
+//   documentation_setup__0   chars   0–1000
+//   documentation_setup__1   chars 850–1850   ← 150-char overlap with __0
+//   documentation_setup__2   chars 1700–2700  ← 150-char overlap with __1</span></pre>
+          </div>
+        </div>
+
+        <!-- Stage 3: After embedding (full chunk doc) -->
+        <div class="stage-row">
+          <div class="stage-connector">
+            <div class="stage-dot" style="border-color:var(--accent)"></div>
+            <div class="stage-line" style="background:linear-gradient(var(--accent),var(--success))"></div>
+          </div>
+          <div class="stage-block stage-blue">
+            <div class="stage-header">
+              <span>⚡</span>
+              <span class="sh-label">③ Embedded Chunk</span>
+              <span class="sh-sub">Azure OpenAI · text-embedding-3-large · 3072 dimensions</span>
+            </div>
+            <pre class="stage-pre">{
+  <span class="jk">"id"</span>:         <span class="js">"documentation_setup__0"</span>,
+  <span class="jk">"text"</span>:       <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`..."</span>,
+  <span class="jk">"path"</span>:       <span class="js">"/Documentation/Setup"</span>,
+  <span class="jk">"url"</span>:        <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>,
+  <span class="jk">"embedding"</span>:  [
+    <span class="jn"> 0.0234</span>, <span class="jn">-0.0891</span>, <span class="jn"> 0.1102</span>, <span class="jn">-0.0338</span>, <span class="jn"> 0.0567</span>, <span class="jn">-0.1245</span>, <span class="jn"> 0.0789</span>, <span class="jn"> 0.0423</span>,
+    <span class="jn">-0.0156</span>, <span class="jn"> 0.0912</span>, <span class="jn">-0.0674</span>, <span class="jn"> 0.1389</span>, <span class="jn">-0.0217</span>, <span class="jn"> 0.0834</span>, <span class="jn">-0.0501</span>, <span class="jn"> 0.0278</span>,
+    <span class="jc">... 3,056 more float32 values — each chunk produces ~12 KB of vector data ...</span>
+  ]
+}
+
+<span class="jc">// this document is now ready to upsert into Azure AI Search
+// batched: 100 chunks per API call  ·  296 pages → ~800–1200 total chunks</span></pre>
+          </div>
+        </div>
+
+        <!-- Stage 4: Search result (query-time retrieval) -->
+        <div class="stage-row">
+          <div class="stage-connector">
+            <div class="stage-dot" style="border-color:var(--success)"></div>
+            <div class="stage-line" style="background:linear-gradient(var(--success),var(--teal))"></div>
+          </div>
+          <div class="stage-block stage-green">
+            <div class="stage-header">
+              <span>🔍</span>
+              <span class="sh-label">④ Hybrid Search Result</span>
+              <span class="sh-sub">Azure AI Search · vector similarity + BM25 · RRF fusion · top-8 chunks</span>
+            </div>
+            <pre class="stage-pre"><span class="jc">// query: "How do I set up the project?"
+// query vector: [0.0198, -0.0743, 0.0934, ...] (same model, same space as stored embeddings)</span>
+
+{
+  <span class="jk">"id"</span>:                      <span class="js">"documentation_setup__0"</span>,
+  <span class="jk">"text"</span>:                    <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`..."</span>,
+  <span class="jk">"path"</span>:                    <span class="js">"/Documentation/Setup"</span>,
+  <span class="jk">"url"</span>:                     <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
+  <span class="jk">"crawled_at"</span>:              <span class="js">"2026-04-08T00:24:38Z"</span>,
+  <span class="jk">"@search.score"</span>:           <span class="jn">0.03482</span>,   <span class="jc">// RRF-fused score (vector + BM25 combined)</span>
+  <span class="jk">"@search.reranker_score"</span>:  <span class="jn">2.847</span>     <span class="jc">// semantic reranker score (if enabled)</span>
+}
+<span class="jc">// up to 8 chunks returned  ·  concatenated into ~12,000 chars of GPT-4o context
+// "embedding" field NOT returned — only text + metadata needed at query time</span></pre>
+          </div>
+        </div>
+
+        <!-- Stage 5: Chat request + response -->
+        <div class="stage-row">
+          <div class="stage-connector">
+            <div class="stage-dot" style="border-color:var(--teal)"></div>
+          </div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:0.75rem; margin-bottom:0.6rem;">
+            <div class="stage-split">
+              <div class="stage-block stage-teal">
+                <div class="stage-header">
+                  <span>💬</span>
+                  <span class="sh-label">⑤ Chat Request</span>
+                  <span class="sh-sub">POST /api/chat</span>
+                </div>
+                <pre class="stage-pre">{
+  <span class="jk">"question"</span>: <span class="js">"How do I set up the project?"</span>
+}</pre>
+              </div>
+              <div class="stage-block stage-teal">
+                <div class="stage-header">
+                  <span>🧠</span>
+                  <span class="sh-label">⑤ Chat Response</span>
+                  <span class="sh-sub">GPT-4o · temp 0.2 · grounded in retrieved chunks</span>
+                </div>
+                <pre class="stage-pre">{
+  <span class="jk">"answer"</span>: <span class="js">"To set up the project, run `npm install`\nfrom the root directory. You will need Node.js\n18+ and Docker Desktop installed first. See the\nPrerequisites section for the full list of\nrequired tools before running any commands."</span>,
+  <span class="jk">"sources"</span>: [
+    {
+      <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
+      <span class="jk">"url"</span>:  <span class="js">"https://dev.azure.com/.../5/Setup"</span>
+    },
+    {
+      <span class="jk">"path"</span>: <span class="js">"/Documentation/Prerequisites"</span>,
+      <span class="jk">"url"</span>:  <span class="js">"https://dev.azure.com/.../3/Prerequisites"</span>
+    }
+  ],
+  <span class="jk">"confidence"</span>: <span class="js">"high"</span>  <span class="jc">// "high" | "medium" | "low"</span>
+}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- ── Key insight ── -->

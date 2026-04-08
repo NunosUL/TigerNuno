@@ -124,6 +124,7 @@
       justify-content: center;
       flex-shrink: 0;
     }
+    .step-body { min-width: 0; }
     .step-body h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.35rem; }
     .step-body p { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
     .step-body .tag {
@@ -185,6 +186,38 @@
       padding: 0.1rem 0.4rem;
       color: var(--text);
     }
+
+    /* ── Payload examples ── */
+    .payload {
+      margin-top: 1rem;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    .payload-label {
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      padding: 0.35rem 0.8rem;
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+    }
+    .payload pre {
+      background: #080c10;
+      padding: 0.85rem 1rem;
+      margin: 0;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.72rem;
+      line-height: 1.65;
+      color: #cdd9e5;
+    }
+    .jk { color: #79c0ff; }
+    .js { color: #a5d6ff; }
+    .jn { color: #d2a8ff; }
+    .jc { color: #6e7681; font-style: italic; }
+    .jh { color: #ffa657; }
   </style>
 </head>
 <body>
@@ -242,6 +275,17 @@
              by <code>crawler.py</code>, with one JSON record per page containing its path,
              URL, raw Markdown, rendered HTML, and crawl timestamp.</p>
           <span class="tag azure">Azure Blob Storage</span>
+          <div class="payload">
+            <div class="payload-label">📄 page record · one entry in the .jsonl blob</div>
+            <pre>{
+  <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
+  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
+  <span class="jk">"markdown"</span>: <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`\nfrom the root directory. Ensure Node.js 18+..."</span>,
+  <span class="jk">"html"</span>: <span class="js">"&lt;h1&gt;Setup Guide&lt;/h1&gt;&lt;p&gt;To install the project, run ...&lt;/p&gt;"</span>,
+  <span class="jk">"links"</span>: [<span class="js">"/Documentation/Prerequisites"</span>, <span class="js">"/Guides/Deploy"</span>],
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
+}</pre>
+          </div>
         </div>
       </div>
 
@@ -256,6 +300,17 @@
              preserve context at boundaries. Only pages whose content has changed since the
              last run are chunked (see change detection below).</p>
           <span class="tag python">LangChain</span>
+          <div class="payload">
+            <div class="payload-label">✂️ chunk record · after splitting · before embedding</div>
+            <pre>{
+  <span class="jk">"id"</span>: <span class="jh">"documentation_setup__0"</span>,  <span class="jc">// "{safe_path}__{chunk_index}"</span>
+  <span class="jk">"text"</span>: <span class="js">"# Setup Guide\n\nTo install the project, run `npm install` from\nthe root directory. Ensure Node.js 18+ is installed before\nrunning the command.\n\n## Prerequisites\n\nThe following tools must be installed on your machine..."</span>,
+  <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
+  <span class="jk">"url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
+  <span class="jc">// ~1000 chars of text  ·  no embedding yet — added in step 3</span>
+}</pre>
+          </div>
         </div>
       </div>
 
@@ -269,6 +324,20 @@
              similarity search at query time.</p>
           <span class="tag azure">Azure OpenAI</span>
           <span class="tag">text-embedding-3-large</span>
+          <div class="payload">
+            <div class="payload-label">⚡ embedded chunk · 3072-dimensional vector added</div>
+            <pre>{
+  <span class="jk">"id"</span>: <span class="js">"documentation_setup__0"</span>,
+  <span class="jk">"text"</span>: <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`..."</span>,
+  <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
+  <span class="jk">"url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>,
+  <span class="jk">"embedding"</span>: [
+    <span class="jn">0.0234</span>, <span class="jn">-0.0891</span>, <span class="jn">0.1102</span>, <span class="jn">-0.0338</span>, <span class="jn">0.0567</span>, <span class="jn">-0.1245</span>, <span class="jn">0.0789</span>, <span class="jn">0.0423</span>,
+    <span class="jc">... 3,064 more float32 values  (text-embedding-3-large = 3072 dims total) ...</span>
+  ]
+}</pre>
+          </div>
         </div>
       </div>
 
@@ -283,6 +352,25 @@
              approximate nearest-neighbour algorithm optimised for high-dimensional vectors.</p>
           <span class="tag search">Azure AI Search</span>
           <span class="tag">HNSW</span>
+          <div class="payload">
+            <div class="payload-label">🗂️ index schema · wiki-index field definitions</div>
+            <pre>{
+  <span class="jk">"name"</span>: <span class="js">"wiki-index"</span>,
+  <span class="jk">"fields"</span>: [
+    { <span class="jk">"name"</span>: <span class="js">"id"</span>,         <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>,            <span class="jk">"key"</span>: <span class="jn">true</span>,  <span class="jk">"filterable"</span>: <span class="jn">true</span>  },
+    { <span class="jk">"name"</span>: <span class="js">"text"</span>,       <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>,            <span class="jk">"searchable"</span>: <span class="jn">true</span>                    },
+    { <span class="jk">"name"</span>: <span class="js">"path"</span>,       <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>,            <span class="jk">"filterable"</span>: <span class="jn">true</span>, <span class="jk">"facetable"</span>: <span class="jn">true</span> },
+    { <span class="jk">"name"</span>: <span class="js">"url"</span>,        <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>                                           },
+    { <span class="jk">"name"</span>: <span class="js">"crawled_at"</span>, <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>,            <span class="jk">"filterable"</span>: <span class="jn">true</span>                    },
+    { <span class="jk">"name"</span>: <span class="js">"embedding"</span>,  <span class="jk">"type"</span>: <span class="js">"Collection(Edm.Single)"</span>,
+      <span class="jk">"dimensions"</span>: <span class="jn">3072</span>,  <span class="jk">"vectorSearchProfile"</span>: <span class="js">"hnsw-profile"</span>                  }
+  ],
+  <span class="jk">"vectorSearch"</span>: {
+    <span class="jk">"algorithms"</span>: [{ <span class="jk">"name"</span>: <span class="js">"hnsw-config"</span>, <span class="jk">"kind"</span>: <span class="js">"hnsw"</span>,
+      <span class="jk">"hnswParameters"</span>: { <span class="jk">"metric"</span>: <span class="js">"cosine"</span>, <span class="jk">"m"</span>: <span class="jn">4</span> } }]
+  }
+}</pre>
+          </div>
         </div>
       </div>
 
@@ -297,6 +385,19 @@
              updated in blob storage.</p>
           <span class="tag search">Azure AI Search</span>
           <span class="tag green">upsert</span>
+          <div class="payload">
+            <div class="payload-label">📤 upsert response · per batch of 100 chunks</div>
+            <pre>{
+  <span class="jk">"value"</span>: [
+    { <span class="jk">"key"</span>: <span class="js">"documentation_setup__0"</span>, <span class="jk">"status"</span>: <span class="jn">true</span>, <span class="jk">"statusCode"</span>: <span class="jn">201</span> },  <span class="jc">// new doc created</span>
+    { <span class="jk">"key"</span>: <span class="js">"documentation_setup__1"</span>, <span class="jk">"status"</span>: <span class="jn">true</span>, <span class="jk">"statusCode"</span>: <span class="jn">201</span> },  <span class="jc">// new doc created</span>
+    { <span class="jk">"key"</span>: <span class="js">"documentation_setup__2"</span>, <span class="jk">"status"</span>: <span class="jn">true</span>, <span class="jk">"statusCode"</span>: <span class="jn">200</span> },  <span class="jc">// existing doc overwritten</span>
+    <span class="jc">... up to 100 results per batch call ...</span>
+  ]
+}
+<span class="jc">// 201 = created  ·  200 = updated (upsert)
+// hash manifest only saved after all batches return zero failures</span></pre>
+          </div>
         </div>
       </div>
 
@@ -330,6 +431,19 @@
           <div class="flow-text">Manifest saved back to blob only if upload succeeds with zero failures</div>
         </div>
       </div>
+      <div class="payload" style="margin-top: 1.25rem;">
+        <div class="payload-label">🔒 wiki_hashes.json · stored in blob storage</div>
+        <pre>{
+  <span class="jk">"/Home"</span>:                         <span class="js">"a3f2c1d8e4b5f6a7"</span>,
+  <span class="jk">"/Documentation/Setup"</span>:         <span class="jh">"b7e3a2d1c9f4e8b2"</span>,  <span class="jc">// changed → will re-embed</span>
+  <span class="jk">"/Documentation/API"</span>:           <span class="js">"c2a8f1b4d7e3c9a1"</span>,
+  <span class="jk">"/Guides/Onboarding"</span>:           <span class="js">"d9b2e7a3f1c8d4b6"</span>,
+  <span class="jk">"/Guides/Deploy"</span>:               <span class="js">"e1f3b7a2d8c5e9f4"</span>,
+  <span class="jc">... one MD5 hash per wiki page (296 total in this example) ...</span>
+}
+<span class="jc">// pages whose current MD5 != stored hash are chunked + embedded + upserted
+// pages whose MD5 matches are skipped entirely — zero API calls</span></pre>
+      </div>
     </div>
 
     <!-- Crawler -->
@@ -342,6 +456,15 @@
       <p>Each run produces a new timestamped <code>.jsonl</code> blob
          (e.g. <code>wiki_ulpsi_NetProjects10_20260408T002438Z.jsonl</code>).
          The ingestion pipeline always picks the most recent one automatically.</p>
+      <div class="payload" style="margin-top: 1.25rem;">
+        <div class="payload-label">📦 .jsonl blob structure · one JSON object per line</div>
+        <pre><span class="jc">// wiki_ulpsi_NetProjects10_20260408T002438Z.jsonl
+// each line is a complete page record (newline-delimited JSON)</span>
+{<span class="jk">"path"</span>:<span class="js">"/Home"</span>,<span class="jk">"remote_url"</span>:<span class="js">"https://dev.azure.com/..."</span>,<span class="jk">"markdown"</span>:<span class="js">"# Home\n..."</span>,<span class="jk">"html"</span>:<span class="js">"&lt;h1&gt;Home&lt;/h1&gt;..."</span>,<span class="jk">"links"</span>:[<span class="js">"/Guides/Onboarding"</span>],<span class="jk">"crawled_at"</span>:<span class="js">"2026-04-08T00:24:38Z"</span>}
+{<span class="jk">"path"</span>:<span class="js">"/Documentation/Setup"</span>,<span class="jk">"remote_url"</span>:<span class="js">"https://dev.azure.com/..."</span>,<span class="jk">"markdown"</span>:<span class="js">"# Setup Guide\n..."</span>,<span class="jk">"html"</span>:<span class="js">"&lt;h1&gt;Setup Guide&lt;/h1&gt;..."</span>,<span class="jk">"links"</span>:[],<span class="jk">"crawled_at"</span>:<span class="js">"2026-04-08T00:24:38Z"</span>}
+{<span class="jk">"path"</span>:<span class="js">"/Documentation/API"</span>,<span class="jk">"remote_url"</span>:<span class="js">"https://dev.azure.com/..."</span>,<span class="jk">"markdown"</span>:<span class="js">"# API Reference\n..."</span>,<span class="jk">"html"</span>:<span class="js">"&lt;h1&gt;API Reference&lt;/h1&gt;..."</span>,<span class="jk">"links"</span>:[<span class="js">"/Documentation/Setup"</span>],<span class="jk">"crawled_at"</span>:<span class="js">"2026-04-08T00:24:38Z"</span>}
+<span class="jc">... 293 more lines (296 pages total) ...</span></pre>
+      </div>
     </div>
 
   </div>
