@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TigerNuno · Wiki Ingestion</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #2f81f7;
+      --accent-glow: rgba(47, 129, 247, 0.25);
+      --success: #3fb950;
+      --success-glow: rgba(63, 185, 80, 0.2);
+      --error: #f85149;
+      --error-glow: rgba(248, 81, 73, 0.2);
+      --warning: #d29922;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #e6edf3 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header p {
+      color: var(--muted);
+      margin-top: 0.5rem;
+      font-size: 0.95rem;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 700px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+
+    /* ── Button ── */
+    #startBtn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      width: 100%;
+      padding: 0.9rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+      margin-bottom: 2.5rem;
+    }
+    #startBtn:hover:not(:disabled) {
+      background: #388bfd;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+    #startBtn:active:not(:disabled) { transform: scale(0.98); }
+    #startBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-icon { font-size: 1.1rem; }
+
+    /* ── Steps pipeline ── */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+
+    .pipeline-track {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--border);
+      transform: translateY(-50%);
+      z-index: 0;
+    }
+
+    .step-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      z-index: 1;
+      flex: 1;
+    }
+
+    .pill {
+      padding: 0.45rem 1.1rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      border: 2px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      transition: all 0.35s ease;
+      white-space: nowrap;
+      position: relative;
+    }
+
+    .pill.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-glow);
+      box-shadow: 0 0 16px var(--accent-glow);
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .pill.done {
+      border-color: var(--success);
+      color: var(--success);
+      background: var(--success-glow);
+    }
+
+    .pill.error {
+      border-color: var(--error);
+      color: var(--error);
+      background: var(--error-glow);
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 8px var(--accent-glow); }
+      50% { box-shadow: 0 0 22px rgba(47,129,247,0.5); }
+    }
+
+    .step-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    /* ── Log ── */
+    .log-wrap {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    .log-header {
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--surface2);
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .log {
+      padding: 0.75rem 1rem;
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.8rem;
+      color: var(--muted);
+      min-height: 80px;
+      max-height: 180px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .log-line { display: flex; gap: 0.6rem; }
+    .log-line .ts { color: #444c56; flex-shrink: 0; }
+    .log-line.success .msg { color: var(--success); }
+    .log-line.error .msg { color: var(--error); }
+    .log-line.active .msg { color: var(--accent); }
+
+    /* ── Summary ── */
+    #summary {
+      display: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.25rem 1.5rem;
+    }
+    #summary h3 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 1rem;
+    }
+    .stat {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+    .stat-label {
+      font-size: 0.7rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .stat.highlight .stat-value { color: var(--accent); }
+    .stat.success .stat-value { color: var(--success); }
+    .stat.warn .stat-value { color: var(--warning); }
+
+    .blob-name {
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .blob-name span { color: var(--text); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Wiki Ingestion Pipeline</h1>
+    <p>Crawl · Chunk · Embed · Index · Upload</p>
+    <div style="display:flex;gap:1.25rem;justify-content:center;margin-top:0.6rem;">
+      <a href="/chat" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">💬 Chat with the Wiki →</a>
+      <a href="/synergies" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">⬡ Pipeline Synergies →</a>
+      <a href="/about" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">How does this work? →</a>
+    </div>
+  </div>
+
+  <div class="card">
+
+    <button id="startBtn">
+      <span class="btn-icon">⚡</span> Start Ingestion
+    </button>
+
+    <!-- Pipeline pills -->
+    <div class="pipeline">
+      <div class="pipeline-track"></div>
+      <div class="step-wrap">
+        <div class="pill" id="pill-fetch">Fetch</div>
+        <div class="step-label">blob</div>
+      </div>
+      <div class="step-wrap">
+        <div class="pill" id="pill-chunk">Chunk</div>
+        <div class="step-label">langchain</div>
+      </div>
+      <div class="step-wrap">
+        <div class="pill" id="pill-embed">Embed</div>
+        <div class="step-label">azure openai</div>
+      </div>
+      <div class="step-wrap">
+        <div class="pill" id="pill-index">Index</div>
+        <div class="step-label">ai search</div>
+      </div>
+      <div class="step-wrap">
+        <div class="pill" id="pill-upload">Upload</div>
+        <div class="step-label">vectors</div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="log-wrap">
+      <div class="log-header">Live Log</div>
+      <div class="log" id="log">
+        <div class="log-line"><span class="ts">--:--:--</span><span class="msg">Waiting to start…</span></div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div id="summary">
+      <h3>Run Summary</h3>
+      <div class="stat-grid">
+        <div class="stat highlight">
+          <div class="stat-value" id="s-pages">—</div>
+          <div class="stat-label">Pages</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="s-skipped">—</div>
+          <div class="stat-label">Unchanged</div>
+        </div>
+        <div class="stat highlight">
+          <div class="stat-value" id="s-chunks">—</div>
+          <div class="stat-label">Chunks</div>
+        </div>
+        <div class="stat success">
+          <div class="stat-value" id="s-uploaded">—</div>
+          <div class="stat-label">Uploaded</div>
+        </div>
+        <div class="stat warn">
+          <div class="stat-value" id="s-failed">—</div>
+          <div class="stat-label">Failed</div>
+        </div>
+      </div>
+      <div class="blob-name">Blob: <span id="s-blob">—</span></div>
+    </div>
+
+  </div>
+
+  <script>
+    const btn = document.getElementById('startBtn');
+    const logEl = document.getElementById('log');
+    const summaryEl = document.getElementById('summary');
+    const STEPS = ['fetch', 'chunk', 'embed', 'index', 'upload'];
+
+    function now() {
+      return new Date().toLocaleTimeString('en-GB', { hour12: false });
+    }
+
+    function addLog(message, type = '') {
+      const line = document.createElement('div');
+      line.className = `log-line ${type}`;
+      line.innerHTML = `<span class="ts">${now()}</span><span class="msg">${message}</span>`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setPill(step, state) {
+      const el = document.getElementById(`pill-${step}`);
+      if (!el) return;
+      el.className = `pill ${state}`;
+      const icons = { active: '⟳ ', done: '✓ ', error: '✕ ' };
+      const labels = { fetch: 'Fetch', chunk: 'Chunk', embed: 'Embed', index: 'Index', upload: 'Upload' };
+      el.textContent = (icons[state] || '') + labels[step];
+    }
+
+    function resetUI() {
+      logEl.innerHTML = '';
+      summaryEl.style.display = 'none';
+      STEPS.forEach(s => {
+        const el = document.getElementById(`pill-${s}`);
+        el.className = 'pill';
+        el.textContent = s.charAt(0).toUpperCase() + s.slice(1);
+      });
+    }
+
+    function showSummary(s) {
+      document.getElementById('s-pages').textContent = s.pages ?? '—';
+      document.getElementById('s-skipped').textContent = s.skipped ?? '—';
+      document.getElementById('s-chunks').textContent = s.chunks ?? '—';
+      document.getElementById('s-uploaded').textContent = s.uploaded ?? '—';
+      document.getElementById('s-failed').textContent = s.failed ?? 0;
+      document.getElementById('s-blob').textContent = s.blob ?? '—';
+      summaryEl.style.display = 'block';
+    }
+
+    btn.addEventListener('click', () => {
+      resetUI();
+      btn.disabled = true;
+      btn.innerHTML = '<span class="btn-icon">⏳</span> Running…';
+
+      const es = new EventSource('/ingest/stream');
+
+      es.onmessage = (e) => {
+        const evt = JSON.parse(e.data);
+
+        if (evt.step === '__done__') {
+          es.close();
+          btn.disabled = false;
+          btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
+          return;
+        }
+
+        const { step, status, message, summary } = evt;
+
+        setPill(step, status);
+
+        const logType = status === 'done' ? 'success' : status === 'error' ? 'error' : 'active';
+        addLog(`[${step.toUpperCase()}] ${message}`, logType);
+
+        if (status === 'error') {
+          es.close();
+          btn.disabled = false;
+          btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
+        }
+
+        if (summary) showSummary(summary);
+      };
+
+      es.onerror = () => {
+        addLog('Connection lost — check server logs.', 'error');
+        es.close();
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
+      };
+    });
+  </script>
+
+</body>
+</html>

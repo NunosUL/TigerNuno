@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TigerNuno · Pipeline Synergies</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #2f81f7;
+      --accent-glow: rgba(47,129,247,0.15);
+      --success: #3fb950;
+      --success-glow: rgba(63,185,80,0.12);
+      --purple: #a371f7;
+      --purple-glow: rgba(163,113,247,0.12);
+      --orange: #f0883e;
+      --orange-glow: rgba(240,136,62,0.12);
+      --teal: #39c5cf;
+      --teal-glow: rgba(57,197,207,0.12);
+      --yellow: #e3b341;
+      --yellow-glow: rgba(227,179,65,0.12);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 3rem 1rem 6rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .back {
+      align-self: flex-start;
+      margin-left: max(1rem, calc(50% - 500px));
+      margin-bottom: 2.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: color 0.2s;
+    }
+    .back:hover { color: var(--accent); }
+
+    .page { width: 100%; max-width: 1000px; }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-bottom: 1rem; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e6edf3 20%, var(--accent) 60%, var(--purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.6rem;
+    }
+    .header p { color: var(--muted); font-size: 0.95rem; line-height: 1.6; max-width: 600px; margin: 0 auto 2rem; }
+
+    /* ── Pipeline tabs ── */
+    .pipeline-labels {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .pl-badge {
+      padding: 0.35rem 1.2rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid;
+    }
+    .pl-badge.ingest  { border-color: var(--orange);  color: var(--orange);  background: var(--orange-glow); }
+    .pl-badge.shared  { border-color: var(--purple);  color: var(--purple);  background: var(--purple-glow); }
+    .pl-badge.chat    { border-color: var(--accent);  color: var(--accent);  background: var(--accent-glow); }
+
+    /* ── Main diagram ── */
+    .diagram-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 3rem;
+      overflow-x: auto;
+    }
+
+    .diagram-svg {
+      display: block;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 940px;
+      min-width: 700px;
+    }
+
+    /* ── Synergy cards ── */
+    .section-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .synergy-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+      gap: 1rem;
+      margin-bottom: 3rem;
+    }
+
+    .syn-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      transition: border-color 0.2s, transform 0.15s;
+      cursor: default;
+    }
+    .syn-card:hover { transform: translateY(-2px); }
+
+    .syn-card.blue   { border-top: 3px solid var(--accent); }
+    .syn-card.green  { border-top: 3px solid var(--success); }
+    .syn-card.purple { border-top: 3px solid var(--purple); }
+    .syn-card.orange { border-top: 3px solid var(--orange); }
+    .syn-card.teal   { border-top: 3px solid var(--teal); }
+    .syn-card.yellow { border-top: 3px solid var(--yellow); }
+    .syn-card.pink   { border-top: 3px solid #f778ba; }
+
+    .syn-header {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      margin-bottom: 0.75rem;
+    }
+    .syn-icon {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    .bg-blue   { background: var(--accent-glow);  border: 1px solid var(--accent); }
+    .bg-green  { background: var(--success-glow); border: 1px solid var(--success); }
+    .bg-purple { background: var(--purple-glow);  border: 1px solid var(--purple); }
+    .bg-orange { background: var(--orange-glow);  border: 1px solid var(--orange); }
+    .bg-teal   { background: var(--teal-glow);    border: 1px solid var(--teal); }
+    .bg-yellow { background: var(--yellow-glow);  border: 1px solid var(--yellow); }
+    .bg-pink   { background: rgba(247,120,186,0.1); border: 1px solid #f778ba; }
+
+    .syn-title { font-size: 0.88rem; font-weight: 600; }
+    .syn-desc  { font-size: 0.82rem; color: var(--muted); line-height: 1.65; }
+
+    .pill-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.65rem; }
+    .pill-sm {
+      font-size: 0.68rem;
+      padding: 0.12rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .pill-sm.blue   { border-color: var(--accent);  color: var(--accent); }
+    .pill-sm.green  { border-color: var(--success); color: var(--success); }
+    .pill-sm.purple { border-color: var(--purple);  color: var(--purple); }
+    .pill-sm.orange { border-color: var(--orange);  color: var(--orange); }
+    .pill-sm.teal   { border-color: var(--teal);    color: var(--teal); }
+    .pill-sm.yellow { border-color: var(--yellow);  color: var(--yellow); }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.78rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1rem 0.38rem;
+    }
+
+    /* ── Key insight banner ── */
+    .insight {
+      background: linear-gradient(135deg, #0d1f38, #1a1626);
+      border: 1px solid #2f4a7a;
+      border-radius: 12px;
+      padding: 1.5rem 2rem;
+      margin-bottom: 3rem;
+      display: flex;
+      gap: 1.25rem;
+      align-items: flex-start;
+    }
+    .insight-icon { font-size: 1.8rem; flex-shrink: 0; }
+    .insight-body h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--accent); }
+    .insight-body p  { font-size: 0.85rem; color: var(--muted); line-height: 1.65; }
+  </style>
+</head>
+<body>
+
+  <a class="back" href="/">← Back to Pipeline</a>
+
+  <div class="page">
+
+    <div class="header">
+      <h1>Pipeline Synergies</h1>
+      <p>The ingestion pipeline and the RAG chat are two separate processes — but every decision
+         made in ingestion was built to make chat work correctly. Here's how they connect.</p>
+    </div>
+
+    <div class="pipeline-labels">
+      <span class="pl-badge ingest">⚙ Ingestion</span>
+      <span class="pl-badge shared">⬡ Shared Contract</span>
+      <span class="pl-badge chat">💬 Chat / RAG</span>
+    </div>
+
+    <!-- ══════════ MAIN DIAGRAM ══════════ -->
+    <div class="diagram-card">
+      <svg class="diagram-svg" viewBox="0 0 940 500" xmlns="http://www.w3.org/2000/svg" fill="none">
+        <defs>
+          <marker id="a0" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#444c56"/></marker>
+          <marker id="a1" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#f0883e"/></marker>
+          <marker id="a2" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#2f81f7"/></marker>
+          <marker id="a3" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#a371f7"/></marker>
+          <marker id="a4" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#3fb950"/></marker>
+          <marker id="a5" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#e3b341"/></marker>
+
+          <!-- synergy link glow -->
+          <filter id="fg" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="4" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- ── BACKGROUND COLUMNS ── -->
+        <!-- Ingestion column -->
+        <rect x="10" y="10" width="270" height="480" rx="12" fill="#1a1208" stroke="#f0883e" stroke-width="1" stroke-opacity="0.3"/>
+        <text x="145" y="32" text-anchor="middle" font-size="11" font-weight="700" fill="#f0883e" opacity="0.8">⚙  INGESTION</text>
+
+        <!-- Shared column -->
+        <rect x="295" y="10" width="350" height="480" rx="12" fill="#14101f" stroke="#a371f7" stroke-width="1" stroke-opacity="0.3"/>
+        <text x="470" y="32" text-anchor="middle" font-size="11" font-weight="700" fill="#a371f7" opacity="0.8">⬡  SHARED CONTRACT</text>
+
+        <!-- Chat column -->
+        <rect x="660" y="10" width="270" height="480" rx="12" fill="#0a1520" stroke="#2f81f7" stroke-width="1" stroke-opacity="0.3"/>
+        <text x="795" y="32" text-anchor="middle" font-size="11" font-weight="700" fill="#2f81f7" opacity="0.8">💬  CHAT / RAG</text>
+
+        <!-- ══════════════════════════════
+             ROW 1 — Wiki source
+        ══════════════════════════════ -->
+        <!-- Wiki pages -->
+        <rect x="30" y="50" width="230" height="50" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
+        <text x="80" y="70" font-size="18">📄</text>
+        <text x="100" y="68" font-size="10" font-weight="700" fill="#f0883e">crawler.py</text>
+        <text x="100" y="82" font-size="9" fill="#8b949e">Azure DevOps Wiki REST API</text>
+        <text x="100" y="93" font-size="9" fill="#8b949e">→ 296 pages as JSONL blob</text>
+
+        <!-- ══════════════════════════════
+             ROW 2 — Chunking / Blob
+        ══════════════════════════════ -->
+        <!-- Chunker -->
+        <rect x="30" y="130" width="230" height="50" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
+        <text x="80" y="150" font-size="18">✂️</text>
+        <text x="100" y="148" font-size="10" font-weight="700" fill="#f0883e">LangChain Splitter</text>
+        <text x="100" y="162" font-size="9" fill="#8b949e">1000 chars · 150 overlap</text>
+        <text x="100" y="173" font-size="9" fill="#8b949e">splits at headings first</text>
+
+        <!-- Blob Storage (shared) -->
+        <rect x="315" y="60" width="310" height="50" rx="8" fill="#21262d" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="365" y="80" font-size="18">🗄️</text>
+        <text x="390" y="78" font-size="10" font-weight="700" fill="#a371f7">Azure Blob Storage</text>
+        <text x="390" y="92" font-size="9" fill="#8b949e">latest .jsonl — shared source of truth</text>
+        <text x="390" y="103" font-size="9" fill="#8b949e">wiki_hashes.json — change manifest</text>
+
+        <!-- arrows crawler → blob, blob → chunker -->
+        <line x1="260" y1="75" x2="315" y2="85" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <line x1="315" y1="95" x2="260" y2="150" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#a3)"/>
+
+        <!-- ══════════════════════════════
+             ROW 3 — Embedding model (SYNERGY ①)
+        ══════════════════════════════ -->
+        <!-- Ingest embed -->
+        <rect x="30" y="220" width="230" height="55" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
+        <text x="80" y="241" font-size="18">⚡</text>
+        <text x="100" y="239" font-size="10" font-weight="700" fill="#f0883e">Embed Chunks</text>
+        <text x="100" y="253" font-size="9" fill="#8b949e">text-embedding-3-large</text>
+        <text x="100" y="265" font-size="9" fill="#8b949e">3072-dim vectors · batches of 100</text>
+
+        <!-- Shared embedding model box -->
+        <rect x="315" y="200" width="310" height="80" rx="8" fill="#0d1f38" stroke="#2f81f7" stroke-width="2" filter="url(#fg)"/>
+        <text x="365" y="225" font-size="18">🔵</text>
+        <text x="390" y="222" font-size="10" font-weight="700" fill="#2f81f7">Azure OpenAI Embeddings</text>
+        <text x="390" y="237" font-size="9" fill="#8b949e">text-embedding-3-large — SAME MODEL</text>
+        <text x="390" y="251" font-size="9" fill="#2f81f7">⚠ Both sides MUST use identical model</text>
+        <text x="390" y="264" font-size="9" fill="#8b949e">so vectors live in the same space</text>
+
+        <!-- Chat embed -->
+        <rect x="680" y="220" width="230" height="55" rx="8" fill="#21262d" stroke="#2f81f7" stroke-width="1.5"/>
+        <text x="730" y="241" font-size="18">⚡</text>
+        <text x="750" y="239" font-size="10" font-weight="700" fill="#2f81f7">Embed Query</text>
+        <text x="750" y="253" font-size="9" fill="#8b949e">text-embedding-3-large</text>
+        <text x="750" y="265" font-size="9" fill="#8b949e">user question → 3072-dim vector</text>
+
+        <!-- arrows to/from shared embedding -->
+        <line x1="260" y1="247" x2="315" y2="247" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <line x1="625" y1="247" x2="680" y2="247" stroke="#2f81f7" stroke-width="1.5" marker-end="url(#a2)"/>
+
+        <!-- ══════════════════════════════
+             ROW 4 — Index (SYNERGY ②)
+        ══════════════════════════════ -->
+        <!-- Ingest upload -->
+        <rect x="30" y="320" width="230" height="55" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
+        <text x="80" y="341" font-size="18">📤</text>
+        <text x="100" y="339" font-size="10" font-weight="700" fill="#f0883e">Upload to Index</text>
+        <text x="100" y="353" font-size="9" fill="#8b949e">upsert by ID · batches of 100</text>
+        <text x="100" y="365" font-size="9" fill="#8b949e">stores: text, path, url, embedding</text>
+
+        <!-- Shared index -->
+        <rect x="315" y="305" width="310" height="80" rx="8" fill="#0e1f16" stroke="#3fb950" stroke-width="2" filter="url(#fg)"/>
+        <text x="365" y="328" font-size="18">🟢</text>
+        <text x="390" y="326" font-size="10" font-weight="700" fill="#3fb950">Azure AI Search — wiki-index</text>
+        <text x="390" y="341" font-size="9" fill="#8b949e">id · text · path · url · embedding</text>
+        <text x="390" y="355" font-size="9" fill="#3fb950">⬡ The handoff point between pipelines</text>
+        <text x="390" y="369" font-size="9" fill="#8b949e">ingestion writes → chat reads</text>
+
+        <!-- Chat hybrid search -->
+        <rect x="680" y="320" width="230" height="55" rx="8" fill="#21262d" stroke="#2f81f7" stroke-width="1.5"/>
+        <text x="730" y="341" font-size="18">🔍</text>
+        <text x="750" y="339" font-size="10" font-weight="700" fill="#2f81f7">Hybrid Search</text>
+        <text x="750" y="353" font-size="9" fill="#8b949e">vector similarity + BM25 keywords</text>
+        <text x="750" y="365" font-size="9" fill="#8b949e">RRF fusion · returns top-K chunks</text>
+
+        <!-- arrows to/from shared index -->
+        <line x1="260" y1="347" x2="315" y2="347" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <line x1="625" y1="347" x2="680" y2="347" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a4)"/>
+
+        <!-- ══════════════════════════════
+             ROW 5 — GPT-4o + Answer
+        ══════════════════════════════ -->
+        <!-- Hash manifest -->
+        <rect x="30" y="415" width="230" height="50" rx="8" fill="#21262d" stroke="#e3b341" stroke-width="1.5"/>
+        <text x="80" y="435" font-size="18">🔒</text>
+        <text x="100" y="433" font-size="10" font-weight="700" fill="#e3b341">Change Detection</text>
+        <text x="100" y="447" font-size="9" fill="#8b949e">MD5 hash per page · skip unchanged</text>
+        <text x="100" y="458" font-size="9" fill="#8b949e">saves embed tokens on re-runs</text>
+
+        <!-- GPT-4o + answer -->
+        <rect x="680" y="415" width="230" height="50" rx="8" fill="#21262d" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="730" y="435" font-size="18">🧠</text>
+        <text x="750" y="433" font-size="10" font-weight="700" fill="#a371f7">GPT-4o + Citations</text>
+        <text x="750" y="447" font-size="9" fill="#8b949e">context from chunks · temp 0.2</text>
+        <text x="750" y="458" font-size="9" fill="#8b949e">path + url surfaced as citations</text>
+
+        <!-- connector: chunker → embed ingest -->
+        <line x1="145" y1="180" x2="145" y2="220" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <!-- connector: embed ingest → upload -->
+        <line x1="145" y1="275" x2="145" y2="320" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <!-- connector: upload → hash -->
+        <line x1="145" y1="375" x2="145" y2="415" stroke="#e3b341" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#a5)"/>
+        <!-- connector: crawler → chunker -->
+        <line x1="145" y1="100" x2="145" y2="130" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+
+        <!-- connector: embed chat → hybrid -->
+        <line x1="795" y1="275" x2="795" y2="320" stroke="#2f81f7" stroke-width="1.5" marker-end="url(#a2)"/>
+        <!-- connector: hybrid → gpt4o -->
+        <line x1="795" y1="375" x2="795" y2="415" stroke="#a371f7" stroke-width="1.5" marker-end="url(#a3)"/>
+
+        <!-- synergy connector: blob → chat embed (dashed) -->
+        <path d="M 470 110 Q 470 140 795 200" stroke="#a371f7" stroke-width="1" stroke-dasharray="5 3" fill="none" opacity="0.5"/>
+
+        <!-- synergy number badges -->
+        <circle cx="287" cy="247" r="10" fill="#0d1117" stroke="#2f81f7" stroke-width="1.5"/>
+        <text x="287" y="251" text-anchor="middle" font-size="9" font-weight="700" fill="#2f81f7">①</text>
+
+        <circle cx="287" cy="347" r="10" fill="#0d1117" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="287" y="351" text-anchor="middle" font-size="9" font-weight="700" fill="#3fb950">②</text>
+
+        <circle cx="287" cy="130" r="10" fill="#0d1117" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="287" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="#a371f7">③</text>
+
+        <!-- legend -->
+        <rect x="315" y="420" width="310" height="55" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+        <text x="470" y="440" text-anchor="middle" font-size="9" font-weight="700" fill="#8b949e">SYNERGY POINTS</text>
+        <circle cx="330" cy="455" r="5" fill="none" stroke="#2f81f7" stroke-width="1.5"/>
+        <text x="340" y="459" font-size="8" fill="#8b949e">① Same embedding model (critical)</text>
+        <circle cx="330" cy="468" r="5" fill="none" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="340" y="472" font-size="8" fill="#8b949e">② Shared index — the handoff point</text>
+        <circle cx="490" cy="455" r="5" fill="none" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="500" y="459" font-size="8" fill="#8b949e">③ Shared blob source</text>
+        <rect x="490" y="462" width="8" height="8" rx="1" fill="none" stroke="#e3b341" stroke-width="1" stroke-dasharray="2 1"/>
+        <text x="502" y="470" font-size="8" fill="#8b949e">metadata flows to citations</text>
+      </svg>
+    </div>
+
+    <!-- ── Synergy cards ── -->
+    <p class="section-label">The 7 synergies in detail</p>
+    <div class="synergy-grid">
+
+      <div class="syn-card blue">
+        <div class="syn-header">
+          <div class="syn-icon bg-blue">⚡</div>
+          <div class="syn-title">① Same Embedding Model</div>
+        </div>
+        <p class="syn-desc">Both sides use <code>text-embedding-3-large</code>. This is the most critical constraint — vectors only make sense for similarity search if they were created in the same 3072-dimensional space. Different models = meaningless results.</p>
+        <div class="pill-row">
+          <span class="pill-sm blue">text-embedding-3-large</span>
+          <span class="pill-sm blue">3072 dims</span>
+          <span class="pill-sm">critical constraint</span>
+        </div>
+      </div>
+
+      <div class="syn-card green">
+        <div class="syn-header">
+          <div class="syn-icon bg-green">⬡</div>
+          <div class="syn-title">② Shared Index — the Handoff Point</div>
+        </div>
+        <p class="syn-desc">Azure AI Search's <code>wiki-index</code> is the single point where ingestion ends and chat begins. Ingestion writes; chat reads. The index schema was designed to serve both — upsert by ID for ingestion, hybrid search fields for chat.</p>
+        <div class="pill-row">
+          <span class="pill-sm green">wiki-index</span>
+          <span class="pill-sm green">upsert</span>
+          <span class="pill-sm">hybrid search</span>
+        </div>
+      </div>
+
+      <div class="syn-card orange">
+        <div class="syn-header">
+          <div class="syn-icon bg-orange">✂️</div>
+          <div class="syn-title">③ Chunk Size Shapes Answer Quality</div>
+        </div>
+        <p class="syn-desc">The 1000-char / 150-overlap split was chosen so 8–10 chunks fit in GPT-4o's 12,000-char context budget while staying semantically meaningful. Too large = fewer sources. Too small = loss of context at boundaries.</p>
+        <div class="pill-row">
+          <span class="pill-sm orange">1000 chars</span>
+          <span class="pill-sm orange">150 overlap</span>
+          <span class="pill-sm">12k budget</span>
+        </div>
+      </div>
+
+      <div class="syn-card purple">
+        <div class="syn-header">
+          <div class="syn-icon bg-purple">🔑</div>
+          <div class="syn-title">④ Deterministic IDs Enable Clean Upserts</div>
+        </div>
+        <p class="syn-desc">Chunk IDs are built from the page path + chunk index. This means re-running ingestion overwrites exactly the right vectors — never creating duplicates. The chat always queries a clean, current index with no stale data.</p>
+        <div class="pill-row">
+          <span class="pill-sm purple">path-based ID</span>
+          <span class="pill-sm purple">no duplicates</span>
+          <span class="pill-sm">always current</span>
+        </div>
+      </div>
+
+      <div class="syn-card teal">
+        <div class="syn-header">
+          <div class="syn-icon bg-teal">📄</div>
+          <div class="syn-title">⑤ Metadata Becomes Citations</div>
+        </div>
+        <p class="syn-desc"><code>path</code> and <code>url</code> are stored at ingestion alongside every chunk. At query time, these are retrieved with the chunks and surfaced in the chat UI as clickable source citations — providing traceability back to the original wiki page.</p>
+        <div class="pill-row">
+          <span class="pill-sm teal">path</span>
+          <span class="pill-sm teal">url</span>
+          <span class="pill-sm">source citations</span>
+        </div>
+      </div>
+
+      <div class="syn-card yellow">
+        <div class="syn-header">
+          <div class="syn-icon bg-yellow">🔒</div>
+          <div class="syn-title">⑥ Change Detection Keeps Index Fresh</div>
+        </div>
+        <p class="syn-desc">The MD5 hash manifest means only changed pages get re-embedded. The chat always gets fresh content after a wiki update, without a costly full re-index. If ingestion fails mid-run, the manifest isn't saved — so the next run retries safely.</p>
+        <div class="pill-row">
+          <span class="pill-sm yellow">MD5 per page</span>
+          <span class="pill-sm yellow">skip unchanged</span>
+          <span class="pill-sm">safe retries</span>
+        </div>
+      </div>
+
+      <div class="syn-card pink">
+        <div class="syn-header">
+          <div class="syn-icon bg-pink">🔍</div>
+          <div class="syn-title">⑦ Text Field Enables Hybrid Search</div>
+        </div>
+        <p class="syn-desc">The <code>text</code> field stored at ingestion is marked <code>searchable</code> in the index schema, enabling Azure AI Search's BM25 full-text engine alongside vector search. The LangChain splitter preserves natural sentences, making keyword matching effective.</p>
+        <div class="pill-row">
+          <span class="pill-sm">BM25 keywords</span>
+          <span class="pill-sm">vector similarity</span>
+          <span class="pill-sm">RRF fusion</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Key insight ── -->
+    <div class="insight">
+      <div class="insight-icon">💡</div>
+      <div class="insight-body">
+        <h3>The key insight</h3>
+        <p>The ingestion pipeline and the RAG chat are <strong>decoupled in time</strong> — ingestion
+           runs on demand when the wiki changes, chat runs on every user question — but they are
+           <strong>tightly coupled in contract</strong>: same embedding model, same index schema,
+           same metadata fields. Change any one of those and both sides break. This is why
+           the two pipelines live in the same repository and share the same <code>.env</code> configuration.</p>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

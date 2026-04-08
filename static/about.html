@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TigerNuno · How It Works</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #2f81f7;
+      --accent-glow: rgba(47, 129, 247, 0.15);
+      --success: #3fb950;
+      --error: #f85149;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 3rem 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .back {
+      align-self: flex-start;
+      margin-left: calc(50% - 380px);
+      margin-bottom: 2rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: color 0.2s;
+    }
+    .back:hover { color: var(--accent); }
+
+    .page { width: 100%; max-width: 760px; }
+
+    .header { margin-bottom: 3rem; }
+    .header h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e6edf3 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+    .header p { color: var(--muted); font-size: 0.95rem; line-height: 1.6; }
+
+    /* ── Architecture diagram ── */
+    .arch {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 3rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+    .arch-node {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+      flex-shrink: 0;
+    }
+    .arch-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text);
+      text-align: center;
+      white-space: nowrap;
+    }
+    .arch-box.azure { border-color: #0078d4; color: #5ba0e8; background: rgba(0,120,212,0.08); }
+    .arch-box.python { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+    .arch-box.search { border-color: var(--success); color: var(--success); background: rgba(63,185,80,0.08); }
+    .arch-sub { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .arch-arrow {
+      font-size: 1rem;
+      color: var(--border);
+      padding: 0 0.3rem;
+      flex-shrink: 0;
+      margin-bottom: 1.2rem;
+    }
+
+    /* ── Steps ── */
+    .steps { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 3rem; }
+
+    .step {
+      display: grid;
+      grid-template-columns: 2.5rem 1fr;
+      gap: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .step-num {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-body h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.35rem; }
+    .step-body p { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
+    .step-body .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      margin-top: 0.5rem;
+      margin-right: 0.3rem;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .tag.azure { border-color: #0078d4; color: #5ba0e8; }
+    .tag.python { border-color: var(--accent); color: var(--accent); }
+    .tag.green { border-color: var(--success); color: var(--success); }
+
+    /* ── Change detection ── */
+    .section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    .detail-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    .detail-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; }
+    .detail-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-bottom: 0.75rem; }
+    .detail-card p:last-child { margin-bottom: 0; }
+
+    .flow {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.82rem;
+    }
+    .flow-icon { font-size: 1rem; flex-shrink: 0; width: 1.5rem; text-align: center; }
+    .flow-text { color: var(--muted); }
+    .flow-text strong { color: var(--text); }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.8rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1rem 0.4rem;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+
+  <a class="back" href="/">← Back to Pipeline</a>
+
+  <div class="page">
+
+    <div class="header">
+      <h1>How It Works</h1>
+      <p>A fully automated RAG ingestion pipeline that crawls an Azure DevOps Wiki,
+         chunks and embeds the content, and indexes it into Azure AI Search for
+         retrieval-augmented generation.</p>
+    </div>
+
+    <!-- Architecture diagram -->
+    <p class="section-title">Architecture</p>
+    <div class="arch">
+      <div class="arch-node">
+        <div class="arch-box azure">Azure DevOps Wiki</div>
+        <div class="arch-sub">source</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-box python">crawler.py</div>
+        <div class="arch-sub">REST API</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-box azure">Blob Storage</div>
+        <div class="arch-sub">.jsonl</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-box python">ingest.py</div>
+        <div class="arch-sub">chunk · embed</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-node">
+        <div class="arch-box search">AI Search</div>
+        <div class="arch-sub">vector index</div>
+      </div>
+    </div>
+
+    <!-- Steps -->
+    <p class="section-title">Pipeline Steps</p>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Fetch</h3>
+          <p>Scans the Azure Blob Storage container for <code>.jsonl</code> files and picks
+             the most recently modified one. Each file is a full snapshot of the wiki produced
+             by <code>crawler.py</code>, with one JSON record per page containing its path,
+             URL, raw Markdown, rendered HTML, and crawl timestamp.</p>
+          <span class="tag azure">Azure Blob Storage</span>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Chunk</h3>
+          <p>Each page's Markdown is split into overlapping chunks using LangChain's
+             <code>RecursiveCharacterTextSplitter</code>. The splitter respects heading
+             boundaries (<code>##</code>, <code>###</code>) before falling back to paragraph
+             and sentence breaks. Chunk size is 1000 characters with 150-character overlap to
+             preserve context at boundaries. Only pages whose content has changed since the
+             last run are chunked (see change detection below).</p>
+          <span class="tag python">LangChain</span>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Embed</h3>
+          <p>Each chunk's text is sent to the Azure OpenAI embeddings API in batches of 100.
+             The <code>text-embedding-3-large</code> model produces a 3072-dimensional vector
+             that captures the semantic meaning of the text. These vectors are what enable
+             similarity search at query time.</p>
+          <span class="tag azure">Azure OpenAI</span>
+          <span class="tag">text-embedding-3-large</span>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Index</h3>
+          <p>Ensures the <code>wiki-index</code> index exists in Azure AI Search. If not, it
+             creates it with fields for <code>id</code>, <code>text</code>, <code>path</code>,
+             <code>url</code>, <code>crawled_at</code>, and the <code>embedding</code> vector
+             field configured with HNSW (Hierarchical Navigable Small World) — a fast
+             approximate nearest-neighbour algorithm optimised for high-dimensional vectors.</p>
+          <span class="tag search">Azure AI Search</span>
+          <span class="tag">HNSW</span>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h3>Upload</h3>
+          <p>Upserts all chunks (text + metadata + embedding vector) into Azure AI Search in
+             batches of 100. Because the operation is an upsert keyed on <code>id</code>,
+             re-running the pipeline never creates duplicates — changed pages are overwritten
+             in place. After a successful upload with zero failures, the hash manifest is
+             updated in blob storage.</p>
+          <span class="tag search">Azure AI Search</span>
+          <span class="tag green">upsert</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Change detection -->
+    <div class="detail-card">
+      <h2>Change Detection</h2>
+      <p>To avoid re-embedding unchanged content (and wasting Azure OpenAI tokens), the
+         pipeline maintains a <code>wiki_hashes.json</code> manifest in blob storage.
+         It maps each wiki page path to an MD5 hash of its Markdown content.</p>
+      <div class="flow">
+        <div class="flow-row">
+          <div class="flow-icon">📥</div>
+          <div class="flow-text">Load <strong>wiki_hashes.json</strong> from blob storage (empty on first run)</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-icon">🔍</div>
+          <div class="flow-text">Hash each page's Markdown and compare to the stored hash</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-icon">✓</div>
+          <div class="flow-text"><strong>Unchanged pages</strong> — skipped entirely (no chunking, no embedding, no upload)</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-icon">⚡</div>
+          <div class="flow-text"><strong>New or changed pages</strong> — chunked, embedded, and upserted</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-icon">💾</div>
+          <div class="flow-text">Manifest saved back to blob only if upload succeeds with zero failures</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Crawler -->
+    <div class="detail-card">
+      <h2>Crawler (<code>crawler.py</code>)</h2>
+      <p>Runs separately from the ingestion pipeline. It authenticates to Azure DevOps
+         using a Personal Access Token (PAT) and calls the Wiki REST API to list all pages
+         recursively in a single request, then fetches each page's Markdown content.
+         The Markdown is also converted to HTML server-side for flexibility.</p>
+      <p>Each run produces a new timestamped <code>.jsonl</code> blob
+         (e.g. <code>wiki_ulpsi_NetProjects10_20260408T002438Z.jsonl</code>).
+         The ingestion pipeline always picks the most recent one automatically.</p>
+    </div>
+
+  </div>
+
+</body>
+</html>

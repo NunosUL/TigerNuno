@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TigerNuno · How Chat Works</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #2f81f7;
+      --accent-glow: rgba(47,129,247,0.15);
+      --success: #3fb950;
+      --success-glow: rgba(63,185,80,0.12);
+      --warning: #d29922;
+      --purple: #a371f7;
+      --purple-glow: rgba(163,113,247,0.12);
+      --teal: #39d353;
+      --orange: #f0883e;
+      --orange-glow: rgba(240,136,62,0.12);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 3rem 1rem 5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Nav ── */
+    .back {
+      align-self: flex-start;
+      margin-left: max(1rem, calc(50% - 440px));
+      margin-bottom: 2.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: color 0.2s;
+    }
+    .back:hover { color: var(--accent); }
+
+    .page { width: 100%; max-width: 880px; }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-bottom: 3.5rem; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e6edf3 30%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.6rem;
+    }
+    .header p { color: var(--muted); font-size: 0.95rem; line-height: 1.6; max-width: 560px; margin: 0 auto; }
+
+    /* ── Diagram ── */
+    .diagram-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      margin-bottom: 3.5rem;
+      overflow-x: auto;
+    }
+
+    .diagram-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    /* SVG diagram */
+    .diagram-svg {
+      display: block;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 780px;
+      min-width: 600px;
+    }
+
+    /* ── Steps detail ── */
+    .section-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .steps { display: flex; flex-direction: column; gap: 0.9rem; margin-bottom: 3rem; }
+
+    .step {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 1.1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem 1.3rem;
+      transition: border-color 0.2s;
+    }
+    .step:hover { border-color: #444c56; }
+
+    .step-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .icon-blue   { background: var(--accent-glow);   border: 1px solid var(--accent); }
+    .icon-green  { background: var(--success-glow);  border: 1px solid var(--success); }
+    .icon-purple { background: var(--purple-glow);   border: 1px solid var(--purple); }
+    .icon-orange { background: var(--orange-glow);   border: 1px solid var(--orange); }
+
+    .step-body h3 { font-size: 0.92rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .step-body p  { font-size: 0.83rem; color: var(--muted); line-height: 1.65; }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.55rem; }
+    .tag {
+      font-size: 0.68rem;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .tag.blue   { border-color: var(--accent);  color: var(--accent); }
+    .tag.green  { border-color: var(--success); color: var(--success); }
+    .tag.purple { border-color: var(--purple);  color: var(--purple); }
+    .tag.orange { border-color: var(--orange);  color: var(--orange); }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.78rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1rem 0.38rem;
+      color: var(--text);
+    }
+
+    /* ── Confidence table ── */
+    .conf-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 3rem;
+    }
+    .conf-card h2 { font-size: 0.92rem; font-weight: 600; margin-bottom: 1rem; }
+    .conf-rows { display: flex; flex-direction: column; gap: 0.6rem; }
+    .conf-row { display: flex; align-items: flex-start; gap: 1rem; font-size: 0.83rem; }
+    .conf-badge {
+      flex-shrink: 0;
+      padding: 0.15rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border: 1px solid;
+      width: 80px;
+      text-align: center;
+    }
+    .conf-badge.high   { border-color: var(--success); color: var(--success); }
+    .conf-badge.medium { border-color: var(--warning); color: var(--warning); }
+    .conf-badge.low    { border-color: #f85149;        color: #f85149; }
+    .conf-desc { color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+
+  <a class="back" href="/chat">← Back to Chat</a>
+
+  <div class="page">
+
+    <div class="header">
+      <h1>How Chat Works</h1>
+      <p>Every question goes through a 5-step RAG pipeline — your query is embedded,
+         matched against the wiki index, and answered by GPT-4o using only the retrieved context.</p>
+    </div>
+
+    <!-- ── Diagram ── -->
+    <div class="diagram-wrap">
+      <div class="diagram-title">RAG Query Pipeline — end to end</div>
+
+      <svg class="diagram-svg" viewBox="0 0 780 320" xmlns="http://www.w3.org/2000/svg" fill="none">
+        <defs>
+          <!-- Arrow marker -->
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#444c56"/>
+          </marker>
+          <marker id="arr-accent" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#2f81f7"/>
+          </marker>
+          <marker id="arr-purple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#a371f7"/>
+          </marker>
+          <marker id="arr-green" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/>
+          </marker>
+          <!-- Glows -->
+          <filter id="glow-blue" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="glow-green" x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- ── Background grid lines (decorative) ── -->
+        <line x1="0" y1="160" x2="780" y2="160" stroke="#21262d" stroke-width="1"/>
+        <line x1="390" y1="0" x2="390" y2="320" stroke="#21262d" stroke-width="1"/>
+
+        <!-- ══════════════════════════════════════════
+             ROW 1: User → Embed → Hybrid Search
+        ══════════════════════════════════════════ -->
+
+        <!-- User Question -->
+        <rect x="20" y="60" width="110" height="60" rx="10" fill="#1c2d4a" stroke="#2f4a7a" stroke-width="1.5"/>
+        <text x="75" y="84" text-anchor="middle" font-size="18" fill="#e6edf3">💬</text>
+        <text x="75" y="103" text-anchor="middle" font-size="10" font-weight="600" fill="#e6edf3">User</text>
+        <text x="75" y="115" text-anchor="middle" font-size="10" fill="#8b949e">Question</text>
+
+        <!-- Arrow → Embed -->
+        <line x1="130" y1="90" x2="163" y2="90" stroke="#444c56" stroke-width="1.5" marker-end="url(#arr)"/>
+        <text x="147" y="85" text-anchor="middle" font-size="8" fill="#8b949e">query</text>
+
+        <!-- 1. Embed Query -->
+        <rect x="165" y="52" width="120" height="76" rx="10" fill="#0d1f38" stroke="#2f81f7" stroke-width="1.5" filter="url(#glow-blue)"/>
+        <text x="225" y="76" text-anchor="middle" font-size="18" fill="#2f81f7">⚡</text>
+        <text x="225" y="96" text-anchor="middle" font-size="10" font-weight="700" fill="#2f81f7">① Embed Query</text>
+        <text x="225" y="110" text-anchor="middle" font-size="9" fill="#8b949e">text-embedding-3-large</text>
+        <text x="225" y="122" text-anchor="middle" font-size="9" fill="#8b949e">→ 3072-dim vector</text>
+
+        <!-- Arrow → Hybrid Search -->
+        <line x1="285" y1="90" x2="318" y2="90" stroke="#2f81f7" stroke-width="1.5" marker-end="url(#arr-accent)"/>
+        <text x="302" y="85" text-anchor="middle" font-size="8" fill="#2f81f7">vector</text>
+
+        <!-- 2. Hybrid Search -->
+        <rect x="320" y="40" width="130" height="100" rx="10" fill="#0e1f16" stroke="#3fb950" stroke-width="1.5" filter="url(#glow-green)"/>
+        <text x="385" y="66" text-anchor="middle" font-size="18" fill="#3fb950">🔍</text>
+        <text x="385" y="86" text-anchor="middle" font-size="10" font-weight="700" fill="#3fb950">② Hybrid Search</text>
+        <text x="385" y="100" text-anchor="middle" font-size="9" fill="#8b949e">Azure AI Search</text>
+        <text x="385" y="113" text-anchor="middle" font-size="9" fill="#8b949e">Vector + Full-text</text>
+        <text x="385" y="126" text-anchor="middle" font-size="9" fill="#8b949e">RRF fusion · top-K</text>
+
+        <!-- Also pass raw text to hybrid search -->
+        <path d="M 75 120 Q 75 148 320 140" stroke="#444c56" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr)" fill="none"/>
+        <text x="170" y="148" text-anchor="middle" font-size="8" fill="#8b949e">keywords</text>
+
+        <!-- ══════════════════════════════════════════
+             ROW 2: Context Builder (center)
+        ══════════════════════════════════════════ -->
+
+        <!-- Arrow down from Hybrid Search -->
+        <line x1="385" y1="140" x2="385" y2="168" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-green)"/>
+        <text x="408" y="158" font-size="8" fill="#3fb950">top-K chunks</text>
+
+        <!-- 3. Context Builder -->
+        <rect x="295" y="170" width="180" height="82" rx="10" fill="#1a1626" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="385" y="196" text-anchor="middle" font-size="18" fill="#a371f7">📋</text>
+        <text x="385" y="216" text-anchor="middle" font-size="10" font-weight="700" fill="#a371f7">③ Context Builder</text>
+        <text x="385" y="230" text-anchor="middle" font-size="9" fill="#8b949e">Rank · Deduplicate</text>
+        <text x="385" y="243" text-anchor="middle" font-size="9" fill="#8b949e">Fit token budget (12k chars)</text>
+
+        <!-- ══════════════════════════════════════════
+             ROW 3: LLM + Format
+        ══════════════════════════════════════════ -->
+
+        <!-- Arrow → LLM -->
+        <line x1="475" y1="211" x2="538" y2="211" stroke="#a371f7" stroke-width="1.5" marker-end="url(#arr-purple)"/>
+        <text x="507" y="206" text-anchor="middle" font-size="8" fill="#a371f7">prompt + context</text>
+
+        <!-- 4. LLM Generation -->
+        <rect x="540" y="170" width="130" height="82" rx="10" fill="#1f1a0e" stroke="#f0883e" stroke-width="1.5"/>
+        <text x="605" y="196" text-anchor="middle" font-size="18" fill="#f0883e">🧠</text>
+        <text x="605" y="216" text-anchor="middle" font-size="10" font-weight="700" fill="#f0883e">④ LLM Generation</text>
+        <text x="605" y="230" text-anchor="middle" font-size="9" fill="#8b949e">Azure OpenAI GPT-4o</text>
+        <text x="605" y="243" text-anchor="middle" font-size="9" fill="#8b949e">temp 0.2 · max 1024 tk</text>
+
+        <!-- Arrow down → Format -->
+        <line x1="605" y1="252" x2="605" y2="272" stroke="#f0883e" stroke-width="1.5" marker-end="url(#arr)"/>
+
+        <!-- 5. Format Response -->
+        <rect x="540" y="274" width="130" height="34" rx="8" fill="#21262d" stroke="#444c56" stroke-width="1"/>
+        <text x="605" y="289" text-anchor="middle" font-size="9" font-weight="600" fill="#e6edf3">⑤ Format Response</text>
+        <text x="605" y="301" text-anchor="middle" font-size="9" fill="#8b949e">Answer · Sources · Confidence</text>
+
+        <!-- Arrow ← back to user -->
+        <path d="M 540 291 Q 200 291 130 291 Q 75 291 75 280" stroke="#444c56" stroke-width="1.5" marker-end="url(#arr)" fill="none"/>
+        <text x="300" y="286" text-anchor="middle" font-size="8" fill="#8b949e">answer + citations</text>
+
+        <!-- ── Azure OpenAI Service cloud shape ── -->
+        <rect x="540" y="8" width="220" height="28" rx="6" fill="#1f2937" stroke="#4a5568" stroke-width="1" stroke-dasharray="4 2"/>
+        <text x="650" y="26" text-anchor="middle" font-size="9" font-weight="600" fill="#8b949e">Azure OpenAI Service</text>
+
+        <!-- dashed lines from embed + llm up to cloud -->
+        <line x1="225" y1="52" x2="580" y2="36" stroke="#2f81f7" stroke-width="1" stroke-dasharray="3 3"/>
+        <line x1="605" y1="170" x2="660" y2="36" stroke="#f0883e" stroke-width="1" stroke-dasharray="3 3"/>
+
+        <!-- Legend -->
+        <rect x="20" y="270" width="8" height="8" rx="2" fill="#2f81f7"/>
+        <text x="32" y="278" font-size="8" fill="#8b949e">Azure OpenAI</text>
+        <rect x="90" y="270" width="8" height="8" rx="2" fill="#3fb950"/>
+        <text x="102" y="278" font-size="8" fill="#8b949e">Azure AI Search</text>
+        <rect x="182" y="270" width="8" height="8" rx="2" fill="#a371f7"/>
+        <text x="194" y="278" font-size="8" fill="#8b949e">Context logic</text>
+        <rect x="254" y="270" width="8" height="8" rx="2" fill="#f0883e"/>
+        <text x="266" y="278" font-size="8" fill="#8b949e">GPT-4o</text>
+      </svg>
+    </div>
+
+    <!-- ── Step details ── -->
+    <p class="section-label">Pipeline steps explained</p>
+    <div class="steps">
+
+      <div class="step">
+        <div class="step-icon icon-blue">⚡</div>
+        <div class="step-body">
+          <h3>① Embed Query</h3>
+          <p>Your question is converted into a 3072-dimensional vector using the same
+             <code>text-embedding-3-large</code> model that was used during ingestion.
+             This ensures the question vector lives in the same semantic space as the
+             stored chunk vectors, making similarity meaningful.</p>
+          <div class="tags">
+            <span class="tag blue">Azure OpenAI</span>
+            <span class="tag">text-embedding-3-large</span>
+            <span class="tag">3072 dims</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-icon icon-green">🔍</div>
+        <div class="step-body">
+          <h3>② Hybrid Search</h3>
+          <p>Azure AI Search runs two searches simultaneously: a <strong>vector similarity search</strong>
+             using the query embedding (finds semantically related chunks even with different wording),
+             and a <strong>full-text keyword search</strong> on the raw question text (catches exact term matches).
+             Results are merged using Reciprocal Rank Fusion (RRF), which rewards chunks that
+             rank well in both searches. The top-K chunks are returned.</p>
+          <div class="tags">
+            <span class="tag green">Azure AI Search</span>
+            <span class="tag">Vector similarity</span>
+            <span class="tag">Full-text BM25</span>
+            <span class="tag">RRF fusion</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-icon icon-purple">📋</div>
+        <div class="step-body">
+          <h3>③ Context Builder</h3>
+          <p>The retrieved chunks are ranked by relevance score, deduplicated by ID,
+             and soft-capped per wiki page so that no single page dominates the context window.
+             Chunks are concatenated with their source path as a label until the 12,000-character
+             budget is reached. The unique source pages are recorded for citation.</p>
+          <div class="tags">
+            <span class="tag purple">Deduplication</span>
+            <span class="tag purple">Token budget</span>
+            <span class="tag">Source metadata</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-icon icon-orange">🧠</div>
+        <div class="step-body">
+          <h3>④ LLM Generation</h3>
+          <p>The context and question are sent to <code>GPT-4o</code> with a strict system prompt:
+             <em>"Answer using ONLY the provided context. Cite sources. If the context is insufficient, say so."</em>
+             Temperature is set to 0.2 for factual, deterministic answers. The model cannot
+             hallucinate facts not present in the retrieved wiki content.</p>
+          <div class="tags">
+            <span class="tag orange">Azure OpenAI</span>
+            <span class="tag">GPT-4o</span>
+            <span class="tag">temp 0.2</span>
+            <span class="tag">max 1024 tokens</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-icon icon-blue">✦</div>
+        <div class="step-body">
+          <h3>⑤ Format Response</h3>
+          <p>The raw answer is returned alongside the list of source wiki pages as clickable
+             citations, and a <strong>confidence signal</strong> computed from the number of
+             chunks retrieved, their relevance scores, and whether the model indicated
+             uncertainty in its answer.</p>
+          <div class="tags">
+            <span class="tag">Answer text</span>
+            <span class="tag">Source citations</span>
+            <span class="tag blue">Confidence signal</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Confidence explanation ── -->
+    <div class="conf-card">
+      <h2>Confidence Signal</h2>
+      <div class="conf-rows">
+        <div class="conf-row">
+          <span class="conf-badge high">High</span>
+          <span class="conf-desc">4+ chunks retrieved with strong relevance scores and no uncertainty language detected in the answer.</span>
+        </div>
+        <div class="conf-row">
+          <span class="conf-badge medium">Medium</span>
+          <span class="conf-desc">2+ chunks retrieved with moderate scores. Answer is likely correct but context coverage is partial.</span>
+        </div>
+        <div class="conf-row">
+          <span class="conf-badge low">Low</span>
+          <span class="conf-desc">Few or weakly-matched chunks, or the model explicitly stated it could not find enough information.</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

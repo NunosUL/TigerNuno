@@ -1,0 +1,17 @@
+requests==2.32.3
+beautifulsoup4==4.12.3
+markdown==3.7
+azure-storage-blob==12.23.1
+python-dotenv==1.0.1
+
+# LangChain
+langchain>=0.3.0
+langchain-openai>=0.2.0
+langchain-community>=0.3.0
+
+# Azure AI Search
+azure-search-documents>=11.4.0
+
+# Web server
+fastapi>=0.115.0
+uvicorn>=0.30.0
