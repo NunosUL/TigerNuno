@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TigerChat · Scoring &amp; Confidence</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #2f81f7;
+      --accent-glow: rgba(47,129,247,0.15);
+      --success: #3fb950;
+      --success-glow: rgba(63,185,80,0.12);
+      --warning: #d29922;
+      --warning-glow: rgba(210,153,34,0.12);
+      --purple: #a371f7;
+      --purple-glow: rgba(163,113,247,0.12);
+      --orange: #f0883e;
+      --orange-glow: rgba(240,136,62,0.12);
+      --danger: #f85149;
+      --danger-glow: rgba(248,81,73,0.12);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 3rem 1rem 5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .back {
+      align-self: flex-start;
+      margin-left: max(1rem, calc(50% - 440px));
+      margin-bottom: 2.5rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: color 0.2s;
+    }
+    .back:hover { color: var(--accent); }
+
+    .page { width: 100%; max-width: 880px; }
+
+    .header { text-align: center; margin-bottom: 3.5rem; }
+    .header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #e6edf3 30%, var(--warning));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.6rem;
+    }
+    .header p { color: var(--muted); font-size: 0.95rem; line-height: 1.6; max-width: 580px; margin: 0 auto; }
+
+    .section-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+
+    /* ── Diagram wrap ── */
+    .diagram-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      margin-bottom: 3.5rem;
+      overflow-x: auto;
+    }
+    .diagram-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .diagram-svg {
+      display: block;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 800px;
+      min-width: 640px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 1.6rem;
+      margin-bottom: 1.1rem;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: #444c56; }
+    .card h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.45rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card p  { font-size: 0.83rem; color: var(--muted); line-height: 1.7; }
+    .card p + p { margin-top: 0.55rem; }
+
+    .card-group { margin-bottom: 3rem; }
+
+    /* coloured left border variants */
+    .card.green  { border-left: 3px solid var(--success); }
+    .card.blue   { border-left: 3px solid var(--accent);  }
+    .card.purple { border-left: 3px solid var(--purple);  }
+    .card.orange { border-left: 3px solid var(--orange);  }
+
+    /* ── Confidence gate table ── */
+    .gate-table { width: 100%; border-collapse: collapse; margin-top: 0.85rem; font-size: 0.82rem; }
+    .gate-table th {
+      text-align: left;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      padding: 0 0.75rem 0.6rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .gate-table td { padding: 0.65rem 0.75rem; border-bottom: 1px solid #21262d; vertical-align: top; color: var(--muted); }
+    .gate-table tr:last-child td { border-bottom: none; }
+    .gate-table td:first-child { font-weight: 600; color: var(--text); white-space: nowrap; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      border: 1px solid;
+    }
+    .badge.high   { border-color: var(--success); color: var(--success); }
+    .badge.medium { border-color: var(--warning); color: var(--warning); }
+    .badge.low    { border-color: var(--danger);  color: var(--danger);  }
+
+    .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.65rem; }
+    .tag {
+      font-size: 0.68rem;
+      padding: 0.15rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .tag.green  { border-color: var(--success); color: var(--success); }
+    .tag.blue   { border-color: var(--accent);  color: var(--accent);  }
+    .tag.purple { border-color: var(--purple);  color: var(--purple);  }
+    .tag.orange { border-color: var(--orange);  color: var(--orange);  }
+    .tag.warn   { border-color: var(--warning); color: var(--warning); }
+
+    code {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.78rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.1rem 0.38rem;
+      color: var(--text);
+    }
+
+    /* ── Threshold visual ── */
+    .threshold-bar {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem 1.6rem;
+      margin-bottom: 3rem;
+    }
+    .threshold-bar h2 { font-size: 0.92rem; font-weight: 600; margin-bottom: 1.2rem; }
+    .bar-track {
+      position: relative;
+      height: 28px;
+      border-radius: 6px;
+      background: linear-gradient(
+        to right,
+        rgba(248,81,73,0.35) 0%,
+        rgba(248,81,73,0.35) 33.3%,
+        rgba(210,153,34,0.35) 33.3%,
+        rgba(210,153,34,0.35) 66.6%,
+        rgba(63,185,80,0.35) 66.6%,
+        rgba(63,185,80,0.35) 100%
+      );
+      margin-bottom: 0.4rem;
+    }
+    .bar-marker {
+      position: absolute;
+      top: -6px;
+      width: 2px;
+      height: 40px;
+      background: var(--border);
+    }
+    .bar-marker::after {
+      content: attr(data-label);
+      position: absolute;
+      top: 44px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.68rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .bar-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--muted); margin-top: 2rem; }
+    .bar-labels span { display: flex; align-items: center; gap: 0.3rem; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dot.low    { background: var(--danger); }
+    .dot.medium { background: var(--warning); }
+    .dot.high   { background: var(--success); }
+  </style>
+</head>
+<body>
+
+  <a class="back" href="/chat/about">← Back to How Chat Works</a>
+
+  <div class="page">
+
+    <div class="header">
+      <h1>Scoring &amp; Confidence</h1>
+      <p>How individual search results are scored using hybrid RRF fusion, and how
+         those scores — combined with chunk count and LLM language — determine the
+         confidence signal shown on every answer.</p>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         PART 1 — SEARCH SCORING DIAGRAM
+    ══════════════════════════════════════════════════ -->
+
+    <p class="section-label">Part 1 — How search results are scored</p>
+    <div class="diagram-wrap">
+      <div class="diagram-title">Hybrid Search Scoring — RRF Fusion</div>
+
+      <svg class="diagram-svg" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg" fill="none">
+        <defs>
+          <marker id="arr"        markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#444c56"/></marker>
+          <marker id="arr-green"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/></marker>
+          <marker id="arr-blue"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#2f81f7"/></marker>
+          <marker id="arr-orange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f0883e"/></marker>
+          <marker id="arr-purple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#a371f7"/></marker>
+          <filter id="glow-blue"  x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="glow-green" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          <filter id="glow-warn"  x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+
+        <!-- ── Query input ── -->
+        <rect x="20" y="160" width="100" height="56" rx="10" fill="#1c2d4a" stroke="#2f4a7a" stroke-width="1.5"/>
+        <text x="70" y="184" text-anchor="middle" font-size="16" fill="#e6edf3">💬</text>
+        <text x="70" y="202" text-anchor="middle" font-size="9.5" font-weight="600" fill="#e6edf3">User Query</text>
+        <text x="70" y="214" text-anchor="middle" font-size="9" fill="#8b949e">question text</text>
+
+        <!-- arrow to vector lane -->
+        <path d="M 120 178 Q 155 178 155 130" stroke="#2f81f7" stroke-width="1.5" marker-end="url(#arr-blue)" fill="none"/>
+        <text x="140" y="154" text-anchor="middle" font-size="8" fill="#2f81f7">embed</text>
+
+        <!-- arrow to BM25 lane -->
+        <path d="M 120 200 Q 155 200 155 258" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-green)" fill="none"/>
+        <text x="140" y="236" text-anchor="middle" font-size="8" fill="#3fb950">keywords</text>
+
+        <!-- ── Lane 1: Vector ── -->
+        <rect x="160" y="80" width="160" height="96" rx="10" fill="#0d1f38" stroke="#2f81f7" stroke-width="1.5" filter="url(#glow-blue)"/>
+        <text x="240" y="104" text-anchor="middle" font-size="13" fill="#2f81f7">⚡</text>
+        <text x="240" y="122" text-anchor="middle" font-size="9.5" font-weight="700" fill="#2f81f7">Vector Similarity</text>
+        <text x="240" y="137" text-anchor="middle" font-size="8.5" fill="#8b949e">cosine distance in 3072-dim</text>
+        <text x="240" y="150" text-anchor="middle" font-size="8.5" fill="#8b949e">space → top-K by similarity</text>
+        <text x="240" y="163" text-anchor="middle" font-size="8.5" fill="#8b949e">rank: #1, #2 … #8</text>
+
+        <!-- ── Lane 2: BM25 ── -->
+        <rect x="160" y="210" width="160" height="96" rx="10" fill="#0e1f16" stroke="#3fb950" stroke-width="1.5" filter="url(#glow-green)"/>
+        <text x="240" y="234" text-anchor="middle" font-size="13" fill="#3fb950">🔤</text>
+        <text x="240" y="252" text-anchor="middle" font-size="9.5" font-weight="700" fill="#3fb950">Full-text BM25</text>
+        <text x="240" y="267" text-anchor="middle" font-size="8.5" fill="#8b949e">keyword frequency + IDF</text>
+        <text x="240" y="281" text-anchor="middle" font-size="8.5" fill="#8b949e">in plain text field → top-K</text>
+        <text x="240" y="294" text-anchor="middle" font-size="8.5" fill="#8b949e">rank: #1, #2 … #8</text>
+
+        <!-- arrows into RRF -->
+        <line x1="320" y1="128" x2="376" y2="188" stroke="#2f81f7" stroke-width="1.5" marker-end="url(#arr-blue)" fill="none"/>
+        <text x="338" y="158" text-anchor="middle" font-size="8" fill="#2f81f7">rank list</text>
+        <line x1="320" y1="258" x2="376" y2="212" stroke="#3fb950" stroke-width="1.5" marker-end="url(#arr-green)" fill="none"/>
+        <text x="338" y="248" text-anchor="middle" font-size="8" fill="#3fb950">rank list</text>
+
+        <!-- ── RRF Fusion ── -->
+        <rect x="378" y="158" width="150" height="70" rx="10" fill="#1a1626" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="453" y="183" text-anchor="middle" font-size="13" fill="#a371f7">∑</text>
+        <text x="453" y="201" text-anchor="middle" font-size="9.5" font-weight="700" fill="#a371f7">RRF Fusion</text>
+        <text x="453" y="215" text-anchor="middle" font-size="8" fill="#8b949e">1/(rank+60) per list, summed</text>
+        <text x="453" y="228" text-anchor="middle" font-size="7.5" fill="#6e7681">@search.score ≈ 0.01–0.06</text>
+
+        <!-- arrow to results -->
+        <line x1="528" y1="193" x2="567" y2="193" stroke="#a371f7" stroke-width="1.5" marker-end="url(#arr-purple)"/>
+
+        <!-- ── Ranked results ── -->
+        <rect x="570" y="118" width="200" height="150" rx="10" fill="#21262d" stroke="#30363d" stroke-width="1.2"/>
+        <text x="670" y="140" text-anchor="middle" font-size="9" font-weight="600" fill="#e6edf3">Ranked Results (top-8)</text>
+
+        <!-- result rows -->
+        <rect x="584" y="148" width="172" height="22" rx="5" fill="#1c2d4a"/>
+        <text x="594" y="163" font-size="8" fill="#2f81f7">#1</text>
+        <text x="615" y="163" font-size="8" fill="#e6edf3">/Docs/Setup  chunk_0</text>
+        <text x="732" y="163" font-size="8" fill="#3fb950">0.0531</text>
+
+        <rect x="584" y="174" width="172" height="22" rx="5" fill="#161f16"/>
+        <text x="594" y="189" font-size="8" fill="#2f81f7">#2</text>
+        <text x="615" y="189" font-size="8" fill="#e6edf3">/Docs/API  chunk_2</text>
+        <text x="732" y="189" font-size="8" fill="#3fb950">0.0412</text>
+
+        <rect x="584" y="200" width="172" height="22" rx="5" fill="#1c1626"/>
+        <text x="594" y="215" font-size="8" fill="#2f81f7">#3</text>
+        <text x="615" y="215" font-size="8" fill="#e6edf3">/Guides/Deploy  chunk_1</text>
+        <text x="732" y="215" font-size="8" fill="#d29922">0.0218</text>
+
+        <text x="670" y="245" text-anchor="middle" font-size="8" fill="#6e7681">… #4 through #8 …</text>
+        <text x="756" y="260" font-size="7.5" fill="#6e7681">score</text>
+
+        <!-- formula annotation -->
+        <rect x="378" y="246" width="340" height="28" rx="6" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+        <text x="548" y="257" text-anchor="middle" font-size="8" fill="#8b949e">score(doc) =</text>
+        <text x="548" y="268" text-anchor="middle" font-size="8" fill="#a371f7">1/(rank_vector + 60)  +  1/(rank_bm25 + 60)</text>
+
+        <!-- Legend -->
+        <rect x="20" y="334" width="8" height="8" rx="2" fill="#2f81f7"/>
+        <text x="32" y="342" font-size="8" fill="#8b949e">Vector (semantic)</text>
+        <rect x="140" y="334" width="8" height="8" rx="2" fill="#3fb950"/>
+        <text x="152" y="342" font-size="8" fill="#8b949e">BM25 (keyword)</text>
+        <rect x="252" y="334" width="8" height="8" rx="2" fill="#a371f7"/>
+        <text x="264" y="342" font-size="8" fill="#8b949e">RRF fusion · @search.score</text>
+      </svg>
+    </div>
+
+    <!-- ── Score explanations ── -->
+    <div class="card-group">
+      <div class="card blue">
+        <h3>⚡ Vector Similarity Search</h3>
+        <p>The user's question is embedded into the same 3072-dimensional vector space used during ingestion
+           (<code>text-embedding-3-large</code>). Azure AI Search computes the cosine distance between the
+           query vector and every stored chunk vector using the HNSW index, returning the top-K nearest
+           neighbours. This lane finds semantically relevant chunks even when they use completely different
+           wording than the question.</p>
+        <div class="tags">
+          <span class="tag blue">cosine similarity</span>
+          <span class="tag blue">HNSW index</span>
+          <span class="tag">3072 dims</span>
+          <span class="tag">k=8</span>
+        </div>
+      </div>
+
+      <div class="card green">
+        <h3>🔤 Full-text BM25 Search</h3>
+        <p>In parallel, Azure AI Search runs a classic BM25 keyword search on the raw question text against
+           the <code>text</code> field of every chunk. BM25 scores based on term frequency normalised
+           by document length and corpus-wide inverse document frequency — it favours chunks that contain
+           rare, specific terms from the query. This lane catches exact terminology matches that a vector
+           search might rank lower due to paraphrasing.</p>
+        <div class="tags">
+          <span class="tag green">BM25</span>
+          <span class="tag green">TF-IDF</span>
+          <span class="tag">keyword match</span>
+          <span class="tag">full-text</span>
+        </div>
+      </div>
+
+      <div class="card purple">
+        <h3>∑ RRF Fusion — how <code>@search.score</code> is computed</h3>
+        <p>Azure AI Search merges the two ranked lists using <strong>Reciprocal Rank Fusion (RRF)</strong>.
+           Each document receives a score contribution from each list it appears in:</p>
+        <p><code>score(doc) = 1 / (rank_vector + 60) + 1 / (rank_bm25 + 60)</code></p>
+        <p>The constant <code>60</code> softens the gap between ranks (so rank #1 vs #2 matters less than
+           rank #1 vs #100). A document that ranks #1 in both lists scores approximately
+           <code>0.0161 + 0.0161 = 0.0323</code>. A document appearing only in one list scores half that.
+           Documents absent from a list contribute 0 from that lane. The final merged list is sorted
+           descending by this fused score — this is the <code>@search.score</code> value captured on
+           each result.</p>
+        <div class="tags">
+          <span class="tag purple">RRF</span>
+          <span class="tag purple">@search.score</span>
+          <span class="tag">typical range 0.01–0.06</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════
+         PART 2 — CONFIDENCE DIAGRAM
+    ══════════════════════════════════════════════════ -->
+
+    <p class="section-label">Part 2 — How confidence is determined</p>
+    <div class="diagram-wrap">
+      <div class="diagram-title">Confidence Signal — decision gate flowchart</div>
+
+      <svg class="diagram-svg" viewBox="0 0 800 360" xmlns="http://www.w3.org/2000/svg" fill="none">
+        <defs>
+          <marker id="c-arr"    markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#444c56"/></marker>
+          <marker id="c-green"  markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#3fb950"/></marker>
+          <marker id="c-warn"   markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#d29922"/></marker>
+          <marker id="c-danger" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#f85149"/></marker>
+        </defs>
+
+        <!-- ── Input: chunks from search ── -->
+        <rect x="300" y="14" width="200" height="44" rx="10" fill="#21262d" stroke="#444c56" stroke-width="1.5"/>
+        <text x="400" y="34" text-anchor="middle" font-size="9.5" font-weight="600" fill="#e6edf3">Chunks from hybrid search</text>
+        <text x="400" y="50" text-anchor="middle" font-size="8.5" fill="#8b949e">list of results with @search.score</text>
+
+        <!-- arrow down -->
+        <line x1="400" y1="58" x2="400" y2="82" stroke="#444c56" stroke-width="1.5" marker-end="url(#c-arr)"/>
+
+        <!-- ── Gate 1: No chunks? ── -->
+        <polygon points="400,84 520,120 400,156 280,120" fill="#1a0e0e" stroke="#f85149" stroke-width="1.5"/>
+        <text x="400" y="116" text-anchor="middle" font-size="9" font-weight="600" fill="#f85149">Gate 1</text>
+        <text x="400" y="130" text-anchor="middle" font-size="8.5" fill="#e6edf3">chunks empty?</text>
+
+        <!-- yes → low -->
+        <line x1="520" y1="120" x2="620" y2="120" stroke="#f85149" stroke-width="1.5" marker-end="url(#c-danger)"/>
+        <text x="568" y="114" text-anchor="middle" font-size="8" fill="#f85149">yes</text>
+        <rect x="622" y="104" width="60" height="32" rx="8" fill="rgba(248,81,73,0.1)" stroke="#f85149" stroke-width="1.5"/>
+        <text x="652" y="124" text-anchor="middle" font-size="10" font-weight="700" fill="#f85149">LOW</text>
+
+        <!-- no → down -->
+        <line x1="400" y1="156" x2="400" y2="178" stroke="#444c56" stroke-width="1.5" marker-end="url(#c-arr)"/>
+        <text x="412" y="170" font-size="8" fill="#8b949e">no</text>
+
+        <!-- ── Gate 2: Uncertainty language? ── -->
+        <polygon points="400,180 530,218 400,256 270,218" fill="#1a0e0e" stroke="#f85149" stroke-width="1.5"/>
+        <text x="400" y="210" text-anchor="middle" font-size="9" font-weight="600" fill="#f85149">Gate 2</text>
+        <text x="400" y="224" text-anchor="middle" font-size="8" fill="#e6edf3">LLM answer contains</text>
+        <text x="400" y="236" text-anchor="middle" font-size="8" fill="#8b949e">"i don't know" / "not enough info" / etc.</text>
+
+        <!-- yes → low -->
+        <line x1="530" y1="218" x2="620" y2="218" stroke="#f85149" stroke-width="1.5" marker-end="url(#c-danger)"/>
+        <text x="574" y="212" text-anchor="middle" font-size="8" fill="#f85149">yes</text>
+        <rect x="622" y="202" width="60" height="32" rx="8" fill="rgba(248,81,73,0.1)" stroke="#f85149" stroke-width="1.5"/>
+        <text x="652" y="222" text-anchor="middle" font-size="10" font-weight="700" fill="#f85149">LOW</text>
+
+        <!-- no → down -->
+        <line x1="400" y1="256" x2="400" y2="278" stroke="#444c56" stroke-width="1.5" marker-end="url(#c-arr)"/>
+        <text x="412" y="270" font-size="8" fill="#8b949e">no</text>
+
+        <!-- ── Gate 3: High check ── -->
+        <polygon points="400,280 530,310 400,340 270,310" fill="#0e1f16" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="400" y="302" text-anchor="middle" font-size="9" font-weight="600" fill="#3fb950">Gate 3</text>
+        <text x="400" y="316" text-anchor="middle" font-size="8" fill="#e6edf3">score &gt; 0.03  AND  chunks ≥ 4?</text>
+        <text x="400" y="328" text-anchor="middle" font-size="7.5" fill="#8b949e">top @search.score of result[0]</text>
+
+        <!-- yes → high -->
+        <line x1="530" y1="310" x2="620" y2="310" stroke="#3fb950" stroke-width="1.5" marker-end="url(#c-green)"/>
+        <text x="574" y="304" text-anchor="middle" font-size="8" fill="#3fb950">yes</text>
+        <rect x="622" y="294" width="60" height="32" rx="8" fill="rgba(63,185,80,0.1)" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="652" y="314" text-anchor="middle" font-size="10" font-weight="700" fill="#3fb950">HIGH</text>
+
+        <!-- no → medium or low annotation (off bottom) -->
+        <line x1="270" y1="310" x2="160" y2="310" stroke="#d29922" stroke-width="1.5" marker-end="url(#c-warn)"/>
+        <text x="213" y="304" text-anchor="middle" font-size="8" fill="#d29922">no →</text>
+        <rect x="30" y="278" width="128" height="64" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+        <text x="94" y="297" text-anchor="middle" font-size="8" fill="#8b949e">score &gt; 0.01</text>
+        <text x="94" y="309" text-anchor="middle" font-size="8" fill="#8b949e">AND chunks ≥ 2?</text>
+        <text x="58" y="330" text-anchor="middle" font-size="8" fill="#d29922">yes → MEDIUM</text>
+        <text x="122" y="330" text-anchor="middle" font-size="8" fill="#f85149">no → LOW</text>
+      </svg>
+    </div>
+
+    <!-- ── Gate explanations ── -->
+    <div class="card-group">
+      <div class="card" style="border-left: 3px solid var(--danger);">
+        <h3>Gate 1 — No results</h3>
+        <p>If the hybrid search returned zero chunks (the index is empty, or the query produced no
+           meaningful matches), confidence is immediately set to <span class="badge low">low</span>.
+           There is no content to base an answer on.</p>
+      </div>
+
+      <div class="card" style="border-left: 3px solid var(--danger);">
+        <h3>Gate 2 — LLM uncertainty language <span style="font-weight:400;font-size:0.78rem;color:var(--muted)">(checked before scores)</span></h3>
+        <p>Even when chunks are retrieved and scored, if GPT-4o's answer contains any of the following
+           phrases the response is classified <span class="badge low">low</span> regardless of score:</p>
+        <p><code>"i don't know"</code> &nbsp;·&nbsp; <code>"not enough information"</code> &nbsp;·&nbsp;
+           <code>"cannot find"</code> &nbsp;·&nbsp; <code>"no information"</code> &nbsp;·&nbsp;
+           <code>"not mentioned"</code> &nbsp;·&nbsp; <code>"unclear"</code></p>
+        <p>This gate takes priority over the score gates — it reflects the model's own assessment that
+           the retrieved context was insufficient to answer the question.</p>
+      </div>
+
+      <div class="card green">
+        <h3>Gate 3 — Score thresholds</h3>
+        <p>If neither earlier gate fired, confidence is determined by the <code>@search.score</code> of the
+           top result combined with the total number of chunks retrieved:</p>
+        <table class="gate-table">
+          <thead>
+            <tr>
+              <th>Condition</th>
+              <th>Signal</th>
+              <th>Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>score &gt; 0.03 &nbsp;&amp;&amp;&nbsp; chunks ≥ 4</td>
+              <td><span class="badge high">high</span></td>
+              <td>Strong RRF score (ranked well in both search lanes) backed by 4 or more corroborating chunks. The answer is well-supported.</td>
+            </tr>
+            <tr>
+              <td>score &gt; 0.01 &nbsp;&amp;&amp;&nbsp; chunks ≥ 2</td>
+              <td><span class="badge medium">medium</span></td>
+              <td>Moderate relevance — at least one lane ranked the document well, and there is a second chunk providing partial coverage. Answer is likely correct but incomplete.</td>
+            </tr>
+            <tr>
+              <td>anything else</td>
+              <td><span class="badge low">low</span></td>
+              <td>Very low RRF score or only a single chunk retrieved. The answer may be speculative or based on a weakly-matched document.</td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="tags" style="margin-top:1rem;">
+          <span class="tag warn">top @search.score = chunks[0].score</span>
+          <span class="tag">typical RRF range 0.01–0.06</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Score range bar ── -->
+    <div class="threshold-bar">
+      <h2>RRF Score Range Reference</h2>
+      <div class="bar-track">
+        <div class="bar-marker" style="left: 16.6%;" data-label="0.01 — medium floor"></div>
+        <div class="bar-marker" style="left: 50%;"   data-label="0.03 — high floor"></div>
+        <div class="bar-marker" style="left: 83.3%;" data-label="0.05 — very strong"></div>
+      </div>
+      <div class="bar-labels">
+        <span><span class="dot low"></span> 0.00–0.01 → low</span>
+        <span><span class="dot medium"></span> 0.01–0.03 → medium (with ≥2 chunks)</span>
+        <span><span class="dot high"></span> 0.03+ → high (with ≥4 chunks)</span>
+        <span style="color:#6e7681;">max ≈ 0.06</span>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

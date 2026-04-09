@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TigerNuno · How Chat Works</title>
+  <title>TigerChat · How Chat Works</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -192,7 +192,8 @@
     <div class="header">
       <h1>How Chat Works</h1>
       <p>Every question goes through a 5-step RAG pipeline — your query is embedded,
-         matched against the wiki index, and answered by GPT-4o using only the retrieved context.</p>
+         matched against the wiki index built by the ingestion pipeline (Crawl → Chunk → Embed → Index → Upload),
+         and answered by GPT-4o using only the retrieved context.</p>
     </div>
 
     <!-- ── Diagram ── -->
@@ -433,6 +434,11 @@
           <span class="conf-badge low">Low</span>
           <span class="conf-desc">Few or weakly-matched chunks, or the model explicitly stated it could not find enough information.</span>
         </div>
+      </div>
+      <div style="margin-top:1.25rem; padding-top:1.1rem; border-top:1px solid var(--border);">
+        <a href="/chat/about/scoring" style="font-size:0.83rem; color:var(--accent); text-decoration:none; display:inline-flex; align-items:center; gap:0.35rem; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.75'" onmouseout="this.style.opacity='1'">
+          How are scores and confidence thresholds calculated? →
+        </a>
       </div>
     </div>
 

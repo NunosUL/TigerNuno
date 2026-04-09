@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TigerNuno · How It Works</title>
+  <title>TigerChat · How It Works</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -222,7 +222,7 @@
 </head>
 <body>
 
-  <a class="back" href="/">← Back to Pipeline</a>
+  <a class="back" href="/ingest">← Back to Pipeline</a>
 
   <div class="page">
 
@@ -242,25 +242,29 @@
       </div>
       <div class="arch-arrow">→</div>
       <div class="arch-node">
-        <div class="arch-box python">crawler.py</div>
+        <div class="arch-box python">① Crawl</div>
         <div class="arch-sub">REST API</div>
       </div>
       <div class="arch-arrow">→</div>
       <div class="arch-node">
-        <div class="arch-box azure">Blob Storage</div>
-        <div class="arch-sub">.jsonl</div>
+        <div class="arch-box python">② Chunk</div>
+        <div class="arch-sub">langchain</div>
       </div>
       <div class="arch-arrow">→</div>
       <div class="arch-node">
-        <div class="arch-box python">ingest.py</div>
-        <div class="arch-sub">chunk · embed</div>
+        <div class="arch-box python">③ Embed</div>
+        <div class="arch-sub">azure openai</div>
       </div>
       <div class="arch-arrow">→</div>
       <div class="arch-node">
-        <div class="arch-box search">AI Search</div>
-        <div class="arch-sub">vector index</div>
+        <div class="arch-box search">④⑤ Index · Upload</div>
+        <div class="arch-sub">ai search</div>
       </div>
     </div>
+    <p style="font-size:0.75rem;color:var(--muted);margin-bottom:2.5rem;">
+      Blob Storage is used for two things: a timestamped JSONL snapshot is saved after each crawl as a record,
+      and a hash manifest (<code>wiki_hashes.json</code>) tracks which pages have changed between runs.
+    </p>
 
     <!-- Steps -->
     <p class="section-title">Pipeline Steps</p>
@@ -269,14 +273,17 @@
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-body">
-          <h3>Fetch</h3>
-          <p>Scans the Azure Blob Storage container for <code>.jsonl</code> files and picks
-             the most recently modified one. Each file is a full snapshot of the wiki produced
-             by <code>crawler.py</code>, with one JSON record per page containing its path,
-             URL, raw Markdown, rendered HTML, and crawl timestamp.</p>
+          <h3>Crawl</h3>
+          <p>Connects to Azure DevOps using a PAT token and calls the Wiki REST API to list
+             all pages recursively in a single request (<code>recursionLevel=full</code>).
+             Each page's Markdown content is then fetched individually, converted to HTML,
+             and links are extracted. The full snapshot is saved as a timestamped
+             <code>.jsonl</code> blob in Azure Blob Storage as a record of the crawl.
+             Any pages that fail to fetch are logged and skipped without stopping the run.</p>
+          <span class="tag azure">Azure DevOps REST API</span>
           <span class="tag azure">Azure Blob Storage</span>
           <div class="payload">
-            <div class="payload-label">📄 page record · one entry in the .jsonl blob</div>
+            <div class="payload-label">📄 page record · one entry per crawled wiki page</div>
             <pre>{
   <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
   <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
@@ -446,26 +453,6 @@
       </div>
     </div>
 
-    <!-- Crawler -->
-    <div class="detail-card">
-      <h2>Crawler (<code>crawler.py</code>)</h2>
-      <p>Runs separately from the ingestion pipeline. It authenticates to Azure DevOps
-         using a Personal Access Token (PAT) and calls the Wiki REST API to list all pages
-         recursively in a single request, then fetches each page's Markdown content.
-         The Markdown is also converted to HTML server-side for flexibility.</p>
-      <p>Each run produces a new timestamped <code>.jsonl</code> blob
-         (e.g. <code>wiki_ulpsi_NetProjects10_20260408T002438Z.jsonl</code>).
-         The ingestion pipeline always picks the most recent one automatically.</p>
-      <div class="payload" style="margin-top: 1.25rem;">
-        <div class="payload-label">📦 .jsonl blob structure · one JSON object per line</div>
-        <pre><span class="jc">// wiki_ulpsi_NetProjects10_20260408T002438Z.jsonl
-// each line is a complete page record (newline-delimited JSON)</span>
-{<span class="jk">"path"</span>:<span class="js">"/Home"</span>,<span class="jk">"remote_url"</span>:<span class="js">"https://dev.azure.com/..."</span>,<span class="jk">"markdown"</span>:<span class="js">"# Home\n..."</span>,<span class="jk">"html"</span>:<span class="js">"&lt;h1&gt;Home&lt;/h1&gt;..."</span>,<span class="jk">"links"</span>:[<span class="js">"/Guides/Onboarding"</span>],<span class="jk">"crawled_at"</span>:<span class="js">"2026-04-08T00:24:38Z"</span>}
-{<span class="jk">"path"</span>:<span class="js">"/Documentation/Setup"</span>,<span class="jk">"remote_url"</span>:<span class="js">"https://dev.azure.com/..."</span>,<span class="jk">"markdown"</span>:<span class="js">"# Setup Guide\n..."</span>,<span class="jk">"html"</span>:<span class="js">"&lt;h1&gt;Setup Guide&lt;/h1&gt;..."</span>,<span class="jk">"links"</span>:[],<span class="jk">"crawled_at"</span>:<span class="js">"2026-04-08T00:24:38Z"</span>}
-{<span class="jk">"path"</span>:<span class="js">"/Documentation/API"</span>,<span class="jk">"remote_url"</span>:<span class="js">"https://dev.azure.com/..."</span>,<span class="jk">"markdown"</span>:<span class="js">"# API Reference\n..."</span>,<span class="jk">"html"</span>:<span class="js">"&lt;h1&gt;API Reference&lt;/h1&gt;..."</span>,<span class="jk">"links"</span>:[<span class="js">"/Documentation/Setup"</span>],<span class="jk">"crawled_at"</span>:<span class="js">"2026-04-08T00:24:38Z"</span>}
-<span class="jc">... 293 more lines (296 pages total) ...</span></pre>
-      </div>
-    </div>
 
   </div>
 

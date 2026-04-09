@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TigerNuno · Wiki Ingestion</title>
+  <title>TigerChat · Wiki Ingestion</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -263,6 +263,7 @@
     <h1>Wiki Ingestion Pipeline</h1>
     <p>Crawl · Chunk · Embed · Index · Upload</p>
     <div style="display:flex;gap:1.25rem;justify-content:center;margin-top:0.6rem;">
+      <a href="/" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">← Home</a>
       <a href="/chat" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">💬 Chat with the Wiki →</a>
       <a href="/synergies" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">⬡ Pipeline Synergies →</a>
       <a href="/about" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">How does this work? →</a>
@@ -279,8 +280,8 @@
     <div class="pipeline">
       <div class="pipeline-track"></div>
       <div class="step-wrap">
-        <div class="pill" id="pill-fetch">Fetch</div>
-        <div class="step-label">blob</div>
+        <div class="pill" id="pill-crawl">Crawl</div>
+        <div class="step-label">devops api</div>
       </div>
       <div class="step-wrap">
         <div class="pill" id="pill-chunk">Chunk</div>
@@ -342,7 +343,7 @@
     const btn = document.getElementById('startBtn');
     const logEl = document.getElementById('log');
     const summaryEl = document.getElementById('summary');
-    const STEPS = ['fetch', 'chunk', 'embed', 'index', 'upload'];
+    const STEPS = ['crawl', 'chunk', 'embed', 'index', 'upload'];
 
     function now() {
       return new Date().toLocaleTimeString('en-GB', { hour12: false });
@@ -361,7 +362,7 @@
       if (!el) return;
       el.className = `pill ${state}`;
       const icons = { active: '⟳ ', done: '✓ ', error: '✕ ' };
-      const labels = { fetch: 'Fetch', chunk: 'Chunk', embed: 'Embed', index: 'Index', upload: 'Upload' };
+      const labels = { crawl: 'Crawl', chunk: 'Chunk', embed: 'Embed', index: 'Index', upload: 'Upload' };
       el.textContent = (icons[state] || '') + labels[step];
     }
 

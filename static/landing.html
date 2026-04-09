@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TigerChat</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0d1117;
+      --surface:      #161b22;
+      --surface2:     #21262d;
+      --border:       #30363d;
+      --text:         #e6edf3;
+      --muted:        #8b949e;
+      --accent:       #2f81f7;
+      --accent-glow:  rgba(47,129,247,0.15);
+      --success:      #3fb950;
+      --success-glow: rgba(63,185,80,0.12);
+      --purple:       #a371f7;
+      --purple-glow:  rgba(163,113,247,0.12);
+      --orange:       #f0883e;
+      --orange-glow:  rgba(240,136,62,0.12);
+      --warning:      #d29922;
+      --warning-glow: rgba(210,153,34,0.12);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4rem 1.5rem 6rem;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      margin-bottom: 4rem;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      background: var(--accent-glow);
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      margin-bottom: 1.5rem;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -1px;
+      background: linear-gradient(135deg, #e6edf3 40%, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1rem;
+      line-height: 1.1;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      line-height: 1.7;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--muted);
+      margin-bottom: 1rem;
+      align-self: flex-start;
+      width: 100%;
+      max-width: 900px;
+    }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      width: 100%;
+      max-width: 900px;
+      margin-bottom: 2.5rem;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem 1.6rem 1.4rem;
+      text-decoration: none;
+      color: inherit;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+    }
+
+    /* colour variants */
+    .card.blue   { border-top: 2px solid var(--accent);   }
+    .card.green  { border-top: 2px solid var(--success);  }
+    .card.purple { border-top: 2px solid var(--purple);   }
+    .card.orange { border-top: 2px solid var(--orange);   }
+    .card.warn   { border-top: 2px solid var(--warning);  }
+
+    .card.blue:hover   { border-color: var(--accent);  box-shadow: 0 8px 32px rgba(47,129,247,0.12); }
+    .card.green:hover  { border-color: var(--success); box-shadow: 0 8px 32px rgba(63,185,80,0.1); }
+    .card.purple:hover { border-color: var(--purple);  box-shadow: 0 8px 32px rgba(163,113,247,0.1); }
+    .card.orange:hover { border-color: var(--orange);  box-shadow: 0 8px 32px rgba(240,136,62,0.1); }
+    .card.warn:hover   { border-color: var(--warning); box-shadow: 0 8px 32px rgba(210,153,34,0.1); }
+
+    .card-icon {
+      font-size: 1.5rem;
+      line-height: 1;
+      margin-bottom: 0.1rem;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .card-desc {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.6;
+      flex: 1;
+    }
+
+    .card-arrow {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+      transition: color 0.2s, transform 0.2s;
+      display: inline-block;
+    }
+    .card:hover .card-arrow { transform: translateX(3px); }
+    .card.blue:hover   .card-arrow { color: var(--accent);  }
+    .card.green:hover  .card-arrow { color: var(--success); }
+    .card.purple:hover .card-arrow { color: var(--purple);  }
+    .card.orange:hover .card-arrow { color: var(--orange);  }
+    .card.warn:hover   .card-arrow { color: var(--warning); }
+
+    .card-tag {
+      display: inline-block;
+      font-size: 0.65rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      margin-top: 0.1rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="hero-badge">RAG · Azure DevOps Wiki</div>
+    <h1>TigerChat</h1>
+    <p>Search and chat with your internal Azure DevOps Wiki using
+       GPT-4o and Azure AI Search — powered by a fully integrated
+       crawl-to-answer RAG pipeline.</p>
+  </div>
+
+  <!-- ── Tools ── -->
+  <p class="section-label">Tools</p>
+  <div class="grid">
+
+    <a class="card blue" href="/ingest">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">Ingestion Pipeline</div>
+      <div class="card-desc">Crawl the Azure DevOps Wiki, chunk and embed the content,
+        and index it into Azure AI Search — all in one run with live progress streaming.</div>
+      <div class="card-tag">Crawl → Chunk → Embed → Index → Upload</div>
+      <span class="card-arrow">Run pipeline →</span>
+    </a>
+
+    <a class="card green" href="/chat">
+      <div class="card-icon">💬</div>
+      <div class="card-title">Chat with the Wiki</div>
+      <div class="card-desc">Ask natural-language questions about your wiki and get
+        GPT-4o answers with source citations and a confidence signal, retrieved
+        from the indexed content.</div>
+      <div class="card-tag">Hybrid search · GPT-4o · Citations</div>
+      <span class="card-arrow">Open chat →</span>
+    </a>
+
+    <a class="card warn" href="/synergies">
+      <div class="card-icon">⬡</div>
+      <div class="card-title">Synergies</div>
+      <div class="card-desc">Visualise the relationships and connections across
+        the pipeline components and their Azure service dependencies.</div>
+      <div class="card-tag">Pipeline map</div>
+      <span class="card-arrow">Explore →</span>
+    </a>
+
+  </div>
+
+  <!-- ── Documentation ── -->
+  <p class="section-label">Documentation</p>
+  <div class="grid">
+
+    <a class="card blue" href="/about">
+      <div class="card-icon">📋</div>
+      <div class="card-title">How Ingestion Works</div>
+      <div class="card-desc">Step-by-step breakdown of the ingestion pipeline:
+        how the wiki is crawled, chunked, embedded, indexed, and kept up to date
+        with change detection.</div>
+      <div class="card-tag">Architecture · Payloads · Change detection</div>
+      <span class="card-arrow">Read →</span>
+    </a>
+
+    <a class="card purple" href="/chat/about">
+      <div class="card-icon">🧠</div>
+      <div class="card-title">How Chat Works</div>
+      <div class="card-desc">The 5-step RAG query pipeline explained: embedding,
+        hybrid search, context building, LLM generation, and the confidence
+        signal — with a full pipeline diagram.</div>
+      <div class="card-tag">RAG pipeline · Hybrid search · GPT-4o</div>
+      <span class="card-arrow">Read →</span>
+    </a>
+
+    <a class="card orange" href="/chat/about/scoring">
+      <div class="card-icon">📊</div>
+      <div class="card-title">Scoring &amp; Confidence</div>
+      <div class="card-desc">How individual search results are scored using RRF
+        fusion, and how the three-gate confidence heuristic turns those scores
+        into a High / Medium / Low signal on every answer.</div>
+      <div class="card-tag">RRF · @search.score · Confidence gates</div>
+      <span class="card-arrow">Read →</span>
+    </a>
+
+  </div>
+
+</body>
+</html>

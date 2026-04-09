@@ -26,7 +26,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # ---------------------------------------------------------------------------
 
 @app.get("/", response_class=HTMLResponse)
-async def index():
+async def landing():
+    return Path("static/landing.html").read_text(encoding="utf-8")
+
+
+@app.get("/ingest", response_class=HTMLResponse)
+async def ingest():
     return Path("static/index.html").read_text(encoding="utf-8")
 
 
@@ -43,6 +48,11 @@ async def about():
 @app.get("/chat/about", response_class=HTMLResponse)
 async def chat_about():
     return Path("static/chat-about.html").read_text(encoding="utf-8")
+
+
+@app.get("/chat/about/scoring", response_class=HTMLResponse)
+async def chat_about_scoring():
+    return Path("static/scoring.html").read_text(encoding="utf-8")
 
 
 @app.get("/synergies", response_class=HTMLResponse)
