@@ -189,10 +189,11 @@
 <body>
 
   <div class="hero">
-    <div class="hero-badge">RAG · Azure DevOps Wiki</div>
+    <div class="hero-badge">RAG · Azure DevOps Wiki · Source Code · Test Plans</div>
     <h1>TigerChat</h1>
-    <p>Search and chat with your internal Azure DevOps Wiki using
-       GPT-4o and Azure AI Search — powered by a fully integrated
+    <p>Search and chat with your internal Azure DevOps content — Wiki pages,
+       Git repository source code, and Test Management cases — using
+       GPT-4o and Azure AI Search, powered by a fully integrated
        crawl-to-answer RAG pipeline.</p>
   </div>
 
@@ -203,19 +204,20 @@
     <a class="card blue" href="/ingest">
       <div class="card-icon">⚡</div>
       <div class="card-title">Ingestion Pipeline</div>
-      <div class="card-desc">Crawl the Azure DevOps Wiki, chunk and embed the content,
-        and index it into Azure AI Search — all in one run with live progress streaming.</div>
-      <div class="card-tag">Crawl → Chunk → Embed → Index → Upload</div>
+      <div class="card-desc">Crawl Wiki pages, Git source code files, and Test Management cases,
+        then chunk, embed, and index everything into Azure AI Search — with live progress streaming
+        and per-source controls.</div>
+      <div class="card-tag">Wiki · Source Code · Test Plans → Chunk → Embed → Index</div>
       <span class="card-arrow">Run pipeline →</span>
     </a>
 
     <a class="card green" href="/chat">
       <div class="card-icon">💬</div>
-      <div class="card-title">Chat with the Wiki</div>
-      <div class="card-desc">Ask natural-language questions about your wiki and get
-        GPT-4o answers with source citations and a confidence signal, retrieved
-        from the indexed content.</div>
-      <div class="card-tag">Hybrid search · GPT-4o · Citations</div>
+      <div class="card-title">Chat with your DevOps Content</div>
+      <div class="card-desc">Ask natural-language questions about your Wiki pages, source code,
+        and test cases — get GPT-4o answers with source citations and a confidence signal,
+        retrieved via hybrid search.</div>
+      <div class="card-tag">Wiki · Source Code · Test Plans · GPT-4o · Citations</div>
       <span class="card-arrow">Open chat →</span>
     </a>
 
@@ -238,8 +240,8 @@
       <div class="card-icon">📋</div>
       <div class="card-title">How Ingestion Works</div>
       <div class="card-desc">Step-by-step breakdown of the ingestion pipeline:
-        how the wiki is crawled, chunked, embedded, indexed, and kept up to date
-        with change detection.</div>
+        how Wiki pages, source code, and test cases are crawled, chunked, embedded,
+        and indexed, with change detection and per-source controls.</div>
       <div class="card-tag">Architecture · Payloads · Change detection</div>
       <span class="card-arrow">Read →</span>
     </a>

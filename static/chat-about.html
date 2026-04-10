@@ -192,8 +192,8 @@
     <div class="header">
       <h1>How Chat Works</h1>
       <p>Every question goes through a 5-step RAG pipeline — your query is embedded,
-         matched against the wiki index built by the ingestion pipeline (Crawl → Chunk → Embed → Index → Upload),
-         and answered by GPT-4o using only the retrieved context.</p>
+         matched against the index built from Wiki pages, source code files, and Test Management cases,
+         and answered by GPT-4o using only the retrieved context with source citations.</p>
     </div>
 
     <!-- ── Diagram ── -->
@@ -280,7 +280,7 @@
         <text x="385" y="196" text-anchor="middle" font-size="18" fill="#a371f7">📋</text>
         <text x="385" y="216" text-anchor="middle" font-size="10" font-weight="700" fill="#a371f7">③ Context Builder</text>
         <text x="385" y="230" text-anchor="middle" font-size="9" fill="#8b949e">Rank · Deduplicate</text>
-        <text x="385" y="243" text-anchor="middle" font-size="9" fill="#8b949e">Fit token budget (12k chars)</text>
+        <text x="385" y="243" text-anchor="middle" font-size="9" fill="#8b949e">Fit token budget (16k chars)</text>
 
         <!-- ══════════════════════════════════════════
              ROW 3: LLM + Format
@@ -352,17 +352,21 @@
       <div class="step">
         <div class="step-icon icon-green">🔍</div>
         <div class="step-body">
-          <h3>② Hybrid Search</h3>
+          <h3>② Hybrid Search + Semantic Reranker</h3>
           <p>Azure AI Search runs two searches simultaneously: a <strong>vector similarity search</strong>
              using the query embedding (finds semantically related chunks even with different wording),
-             and a <strong>full-text keyword search</strong> on the raw question text (catches exact term matches).
-             Results are merged using Reciprocal Rank Fusion (RRF), which rewards chunks that
-             rank well in both searches. The top-K chunks are returned.</p>
+             and a <strong>full-text BM25 keyword search</strong> (catches exact term matches).
+             Results are merged via Reciprocal Rank Fusion (RRF). The top 15 chunks are then
+             passed through the <strong>Semantic Reranker</strong> — a neural cross-encoder that
+             re-scores each chunk on a 0–4 scale for true semantic relevance to the question.
+             Chunks scoring below 1.0 are dropped before context is built.</p>
           <div class="tags">
             <span class="tag green">Azure AI Search</span>
-            <span class="tag">Vector similarity</span>
-            <span class="tag">Full-text BM25</span>
+            <span class="tag">Vector + BM25</span>
             <span class="tag">RRF fusion</span>
+            <span class="tag green">Semantic Reranker</span>
+            <span class="tag">@search.reranker_score (0–4)</span>
+            <span class="tag">min score filter</span>
           </div>
         </div>
       </div>
@@ -372,12 +376,16 @@
         <div class="step-body">
           <h3>③ Context Builder</h3>
           <p>The retrieved chunks are ranked by relevance score, deduplicated by ID,
-             and soft-capped per wiki page so that no single page dominates the context window.
-             Chunks are concatenated with their source path as a label until the 12,000-character
-             budget is reached. The unique source pages are recorded for citation.</p>
+             and soft-capped per source path so that no single file or page dominates the context window.
+             Each chunk is labelled with its source type —
+             <code>[Wiki: /Documentation/…]</code>, <code>[Source Code: /repos/…]</code>, or
+             <code>[Test Case: /test-cases/…]</code> — so GPT-4o knows what kind of content it is reading.
+             Chunks are concatenated until the 16,000-character budget is reached.
+             The unique sources are recorded for citation.</p>
           <div class="tags">
             <span class="tag purple">Deduplication</span>
-            <span class="tag purple">Token budget</span>
+            <span class="tag purple">Token budget · 16k chars</span>
+            <span class="tag">Source type labels</span>
             <span class="tag">Source metadata</span>
           </div>
         </div>
@@ -387,10 +395,12 @@
         <div class="step-icon icon-orange">🧠</div>
         <div class="step-body">
           <h3>④ LLM Generation</h3>
-          <p>The context and question are sent to <code>GPT-4o</code> with a strict system prompt:
-             <em>"Answer using ONLY the provided context. Cite sources. If the context is insufficient, say so."</em>
-             Temperature is set to 0.2 for factual, deterministic answers. The model cannot
-             hallucinate facts not present in the retrieved wiki content.</p>
+          <p>The context and question are sent to <code>GPT-4o</code> with a system prompt that
+             declares all three source types and how to use each:
+             <em>"Answer using ONLY the provided context. When answering about test cases, list them
+             with their ID and steps. When answering about code, reference the file path. When answering
+             about documentation, reference the wiki page."</em>
+             Temperature is set to 0.2 for factual, deterministic answers.</p>
           <div class="tags">
             <span class="tag orange">Azure OpenAI</span>
             <span class="tag">GPT-4o</span>
@@ -404,14 +414,16 @@
         <div class="step-icon icon-blue">✦</div>
         <div class="step-body">
           <h3>⑤ Format Response</h3>
-          <p>The raw answer is returned alongside the list of source wiki pages as clickable
-             citations, and a <strong>confidence signal</strong> computed from the number of
-             chunks retrieved, their relevance scores, and whether the model indicated
-             uncertainty in its answer.</p>
+          <p>The raw answer is returned alongside clickable source citations — wiki pages, code files,
+             or test cases — and a <strong>confidence signal</strong> derived from the semantic
+             reranker score (<code>@search.reranker_score</code>, 0–4 scale), the number of chunks
+             that passed the min-score filter, and whether GPT-4o expressed uncertainty.
+             High confidence requires a reranker score ≥ 2.5 with at least 3 supporting chunks.</p>
           <div class="tags">
             <span class="tag">Answer text</span>
             <span class="tag">Source citations</span>
             <span class="tag blue">Confidence signal</span>
+            <span class="tag">reranker_score · chunk count</span>
           </div>
         </div>
       </div>
@@ -424,15 +436,15 @@
       <div class="conf-rows">
         <div class="conf-row">
           <span class="conf-badge high">High</span>
-          <span class="conf-desc">4+ chunks retrieved with strong relevance scores and no uncertainty language detected in the answer.</span>
+          <span class="conf-desc">Semantic reranker score ≥ 2.5 with 3+ supporting chunks and no uncertainty language in the answer.</span>
         </div>
         <div class="conf-row">
           <span class="conf-badge medium">Medium</span>
-          <span class="conf-desc">2+ chunks retrieved with moderate scores. Answer is likely correct but context coverage is partial.</span>
+          <span class="conf-desc">Reranker score ≥ 1.5 with 2+ chunks. Answer is likely correct but context coverage is partial.</span>
         </div>
         <div class="conf-row">
           <span class="conf-badge low">Low</span>
-          <span class="conf-desc">Few or weakly-matched chunks, or the model explicitly stated it could not find enough information.</span>
+          <span class="conf-desc">Few chunks passed the min-score filter, scores were weak, or the model stated it could not find enough information.</span>
         </div>
       </div>
       <div style="margin-top:1.25rem; padding-top:1.1rem; border-top:1px solid var(--border);">

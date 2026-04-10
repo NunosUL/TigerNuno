@@ -228,17 +228,19 @@
 
     <div class="header">
       <h1>How It Works</h1>
-      <p>A fully automated RAG ingestion pipeline that crawls an Azure DevOps Wiki,
-         chunks and embeds the content, and indexes it into Azure AI Search for
-         retrieval-augmented generation.</p>
+      <p>A fully automated RAG ingestion pipeline that crawls three Azure DevOps sources —
+         Wiki pages, Git repository code files, and Test Management cases — then chunks,
+         embeds, and indexes all content into Azure AI Search for retrieval-augmented generation.</p>
     </div>
 
     <!-- Architecture diagram -->
     <p class="section-title">Architecture</p>
     <div class="arch">
-      <div class="arch-node">
-        <div class="arch-box azure">Azure DevOps Wiki</div>
-        <div class="arch-sub">source</div>
+      <div class="arch-node" style="gap:0.3rem;">
+        <div class="arch-box azure" style="font-size:0.7rem;">Wiki Pages</div>
+        <div class="arch-box azure" style="font-size:0.7rem;">Code Files</div>
+        <div class="arch-box azure" style="font-size:0.7rem;">Test Cases</div>
+        <div class="arch-sub">azure devops</div>
       </div>
       <div class="arch-arrow">→</div>
       <div class="arch-node">
@@ -262,8 +264,9 @@
       </div>
     </div>
     <p style="font-size:0.75rem;color:var(--muted);margin-bottom:2.5rem;">
-      Blob Storage is used for two things: a timestamped JSONL snapshot is saved after each crawl as a record,
-      and a hash manifest (<code>wiki_hashes.json</code>) tracks which pages have changed between runs.
+      Blob Storage is used for two things: a fixed-name JSONL snapshot (<code>wiki_ORG_PROJECT.jsonl</code>)
+      is overwritten on each crawl run, and a hash manifest (<code>wiki_hashes.json</code>) tracks which
+      records have changed between runs to avoid re-embedding unchanged content.
     </p>
 
     <!-- Steps -->
@@ -274,24 +277,58 @@
         <div class="step-num">1</div>
         <div class="step-body">
           <h3>Crawl</h3>
-          <p>Connects to Azure DevOps using a PAT token and calls the Wiki REST API to list
-             all pages recursively in a single request (<code>recursionLevel=full</code>).
-             Each page's Markdown content is then fetched individually, converted to HTML,
-             and links are extracted. The full snapshot is saved as a timestamped
-             <code>.jsonl</code> blob in Azure Blob Storage as a record of the crawl.
-             Any pages that fail to fetch are logged and skipped without stopping the run.</p>
+          <p>Connects to Azure DevOps using a PAT token and collects records from up to three
+             sources — each controlled by an environment toggle:</p>
+          <ul style="margin:0.6rem 0 0.6rem 1.2rem;font-size:0.88rem;color:var(--muted);line-height:1.8;">
+            <li><strong style="color:var(--text);">Wiki pages</strong> — lists all pages recursively
+              (<code>recursionLevel=full</code>), fetches each page's Markdown, converts to HTML,
+              and extracts links.</li>
+            <li><strong style="color:var(--text);">Code files</strong> — enumerates every Git repository,
+              walks the file tree (paginated via <code>x-ms-continuationtoken</code>), downloads
+              files up to 100 KB, skips binaries, lock files, migrations, and auto-generated code.</li>
+            <li><strong style="color:var(--text);">Test cases</strong> — traverses all Test Plans and
+              Suites, deduplicates work items, and formats each test case as structured Markdown with
+              a steps table, plan/suite context, and tags — enabling queries like
+              <em>"what test cases cover Onboarding?"</em></li>
+          </ul>
+          <p>All records share the same <code>{path, remote_url, html, markdown, links, crawled_at}</code>
+             shape and are written as a single <code>.jsonl</code> blob in Azure Blob Storage
+             (always the same filename — no timestamp suffix — so each run overwrites the previous snapshot).
+             Any item that fails to fetch is logged and skipped without stopping the run.</p>
           <span class="tag azure">Azure DevOps REST API</span>
           <span class="tag azure">Azure Blob Storage</span>
           <div class="payload">
-            <div class="payload-label">📄 page record · one entry per crawled wiki page</div>
+            <div class="payload-label">📄 wiki record · path prefix: /Documentation/…</div>
             <pre>{
   <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
   <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
-  <span class="jk">"markdown"</span>: <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`\nfrom the root directory. Ensure Node.js 18+..."</span>,
+  <span class="jk">"markdown"</span>: <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`..."</span>,
   <span class="jk">"html"</span>: <span class="js">"&lt;h1&gt;Setup Guide&lt;/h1&gt;&lt;p&gt;To install the project, run ...&lt;/p&gt;"</span>,
   <span class="jk">"links"</span>: [<span class="js">"/Documentation/Prerequisites"</span>, <span class="js">"/Guides/Deploy"</span>],
   <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
 }</pre>
+          </div>
+          <div class="payload" style="margin-top:0.6rem;">
+            <div class="payload-label">💻 code record · path prefix: /repos/{repo}/…</div>
+            <pre>{
+  <span class="jk">"path"</span>: <span class="js">"/repos/MyApp/src/Services/PaymentService.cs"</span>,
+  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_git/MyApp?path=/src/Services/PaymentService.cs"</span>,
+  <span class="jk">"markdown"</span>: <span class="js">"public class PaymentService : IPaymentService\n{\n    public async Task&lt;Result&gt; ProcessAsync(..."</span>,
+  <span class="jk">"html"</span>: <span class="js">"&lt;pre&gt;&lt;code class=\"language-cs\"&gt;public class PaymentService...&lt;/code&gt;&lt;/pre&gt;"</span>,
+  <span class="jk">"links"</span>: [],
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
+}<span class="jc">  // files &gt;100 KB, binaries, lock files, and auto-generated code are skipped</span></pre>
+          </div>
+          <div class="payload" style="margin-top:0.6rem;">
+            <div class="payload-label">🧪 test case record · path prefix: /test-cases/{id}</div>
+            <pre>{
+  <span class="jk">"path"</span>: <span class="js">"/test-cases/12345"</span>,
+  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_workitems/edit/12345"</span>,
+  <span class="jk">"markdown"</span>: <span class="js">"# Test Case: Onboarding - New User Registration\n\n**ID:** 12345 | **Plan:** Sprint 12\n\n## Test Steps\n| Step | Action | Expected Result |\n|------|--------|-----------------|\n| 1 | Navigate to /register | Registration form is displayed |..."</span>,
+  <span class="jk">"html"</span>: <span class="js">"&lt;h1&gt;Test Case: Onboarding...&lt;/h1&gt;&lt;table&gt;...&lt;/table&gt;"</span>,
+  <span class="jk">"links"</span>: [],
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
+}<span class="jc">  // test cases are deduplicated by work item ID across all plans and suites</span></pre>
           </div>
         </div>
       </div>
@@ -410,12 +447,46 @@
 
     </div>
 
-    <!-- Change detection -->
+    <!-- Ingestion UI settings -->
+    <p class="section-title">Ingestion UI — Pipeline Settings</p>
     <div class="detail-card">
-      <h2>Change Detection</h2>
+      <h2>Crawl Toggle &amp; Source Selection</h2>
+      <p>The ingestion page exposes two settings that let you control exactly what runs before
+         committing to a full crawl-to-upload cycle:</p>
+      <div class="flow">
+        <div class="flow-row">
+          <div class="flow-icon">⚙️</div>
+          <div class="flow-text"><strong>Include crawling</strong> — master toggle. When ON (default), fresh content is pulled
+            from Azure DevOps before indexing. When OFF, the pipeline loads the last saved JSONL
+            snapshot from Blob Storage and re-indexes it without making any DevOps API calls.
+            Useful after index schema changes or embedding model upgrades.</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-icon">☑️</div>
+          <div class="flow-text"><strong>Sources to crawl</strong> — visible only when crawling is ON.
+            Three toggles: <strong>Wiki</strong>, <strong>Source Code</strong>, <strong>Test Plans</strong>.
+            Deselect a source to skip it in this run — e.g. crawl only Test Plans after adding new test
+            cases, without re-crawling all 90+ repositories.</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-icon">💡</div>
+          <div class="flow-text">Settings are passed as query parameters to <code>GET /ingest/stream</code>
+            and override the <code>CRAWL_WIKI</code> / <code>CRAWL_CODE</code> / <code>CRAWL_TESTS</code>
+            environment variables for that run only.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change detection -->
+    <p class="section-title">Change Detection</p>
+    <div class="detail-card">
+      <h2>Hash Manifest</h2>
       <p>To avoid re-embedding unchanged content (and wasting Azure OpenAI tokens), the
-         pipeline maintains a <code>wiki_hashes.json</code> manifest in blob storage.
-         It maps each wiki page path to an MD5 hash of its Markdown content.</p>
+         pipeline maintains a <code>wiki_hashes.json</code> manifest in Blob Storage.
+         It maps the <code>path</code> of every crawled record — wiki page, code file, or
+         test case — to an MD5 hash of its Markdown content. All three source types share
+         the same manifest because their paths never collide
+         (<code>/Documentation/…</code>, <code>/repos/…</code>, <code>/test-cases/…</code>).</p>
       <div class="flow">
         <div class="flow-row">
           <div class="flow-icon">📥</div>
@@ -423,15 +494,15 @@
         </div>
         <div class="flow-row">
           <div class="flow-icon">🔍</div>
-          <div class="flow-text">Hash each page's Markdown and compare to the stored hash</div>
+          <div class="flow-text">Hash each record's Markdown and compare to the stored hash</div>
         </div>
         <div class="flow-row">
           <div class="flow-icon">✓</div>
-          <div class="flow-text"><strong>Unchanged pages</strong> — skipped entirely (no chunking, no embedding, no upload)</div>
+          <div class="flow-text"><strong>Unchanged records</strong> — skipped entirely (no chunking, no embedding, no upload)</div>
         </div>
         <div class="flow-row">
           <div class="flow-icon">⚡</div>
-          <div class="flow-text"><strong>New or changed pages</strong> — chunked, embedded, and upserted</div>
+          <div class="flow-text"><strong>New or changed records</strong> — chunked, embedded, and upserted</div>
         </div>
         <div class="flow-row">
           <div class="flow-icon">💾</div>
@@ -439,17 +510,18 @@
         </div>
       </div>
       <div class="payload" style="margin-top: 1.25rem;">
-        <div class="payload-label">🔒 wiki_hashes.json · stored in blob storage</div>
+        <div class="payload-label">🔒 wiki_hashes.json · stored in blob storage · all source types in one manifest</div>
         <pre>{
-  <span class="jk">"/Home"</span>:                         <span class="js">"a3f2c1d8e4b5f6a7"</span>,
-  <span class="jk">"/Documentation/Setup"</span>:         <span class="jh">"b7e3a2d1c9f4e8b2"</span>,  <span class="jc">// changed → will re-embed</span>
-  <span class="jk">"/Documentation/API"</span>:           <span class="js">"c2a8f1b4d7e3c9a1"</span>,
-  <span class="jk">"/Guides/Onboarding"</span>:           <span class="js">"d9b2e7a3f1c8d4b6"</span>,
-  <span class="jk">"/Guides/Deploy"</span>:               <span class="js">"e1f3b7a2d8c5e9f4"</span>,
-  <span class="jc">... one MD5 hash per wiki page (296 total in this example) ...</span>
+  <span class="jk">"/Home"</span>:                                          <span class="js">"a3f2c1d8e4b5f6a7"</span>,
+  <span class="jk">"/Documentation/Setup"</span>:                          <span class="jh">"b7e3a2d1c9f4e8b2"</span>,  <span class="jc">// changed → will re-embed</span>
+  <span class="jk">"/repos/MyApp/src/Services/PaymentService.cs"</span>:   <span class="js">"c2a8f1b4d7e3c9a1"</span>,
+  <span class="jk">"/repos/MyApp/src/Controllers/HomeController.cs"</span>: <span class="jh">"d4b9f2e1a7c3d8f6"</span>,  <span class="jc">// changed → will re-embed</span>
+  <span class="jk">"/test-cases/12345"</span>:                              <span class="js">"e1f3b7a2d8c5e9f4"</span>,
+  <span class="jk">"/test-cases/12346"</span>:                              <span class="js">"f5a2c9e3b1d7f4a8"</span>,
+  <span class="jc">... one MD5 per record across wiki, code, and test sources ...</span>
 }
-<span class="jc">// pages whose current MD5 != stored hash are chunked + embedded + upserted
-// pages whose MD5 matches are skipped entirely — zero API calls</span></pre>
+<span class="jc">// records whose current MD5 != stored hash are chunked + embedded + upserted
+// records whose MD5 matches are skipped entirely — zero API calls</span></pre>
       </div>
     </div>
 

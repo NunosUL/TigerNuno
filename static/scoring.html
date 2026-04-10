@@ -239,7 +239,7 @@
          PART 1 — SEARCH SCORING DIAGRAM
     ══════════════════════════════════════════════════ -->
 
-    <p class="section-label">Part 1 — How search results are scored</p>
+    <p class="section-label">Part 1 — How search results are scored, reranked &amp; filtered</p>
     <div class="diagram-wrap">
       <div class="diagram-title">Hybrid Search Scoring — RRF Fusion</div>
 
@@ -303,7 +303,7 @@
 
         <!-- ── Ranked results ── -->
         <rect x="570" y="118" width="200" height="150" rx="10" fill="#21262d" stroke="#30363d" stroke-width="1.2"/>
-        <text x="670" y="140" text-anchor="middle" font-size="9" font-weight="600" fill="#e6edf3">Ranked Results (top-8)</text>
+        <text x="670" y="140" text-anchor="middle" font-size="9" font-weight="600" fill="#e6edf3">Ranked Results (top-15)</text>
 
         <!-- result rows -->
         <rect x="584" y="148" width="172" height="22" rx="5" fill="#1c2d4a"/>
@@ -381,11 +381,67 @@
            <code>0.0161 + 0.0161 = 0.0323</code>. A document appearing only in one list scores half that.
            Documents absent from a list contribute 0 from that lane. The final merged list is sorted
            descending by this fused score — this is the <code>@search.score</code> value captured on
-           each result.</p>
+           each result. The top 15 results proceed to the semantic reranker.</p>
         <div class="tags">
           <span class="tag purple">RRF</span>
           <span class="tag purple">@search.score</span>
           <span class="tag">typical range 0.01–0.06</span>
+        </div>
+      </div>
+
+      <div class="card orange">
+        <h3>🧠 Semantic Reranker — <code>@search.reranker_score</code></h3>
+        <p>After RRF, the top-15 results are re-scored by Azure AI Search's <strong>Semantic Reranker</strong>
+           — a neural cross-encoder model trained specifically for passage ranking. Unlike RRF (which is
+           purely rank-based), the semantic reranker reads both the question and the full chunk text together
+           and predicts a true relevance score on a <strong>0–4 scale</strong>:</p>
+        <p><strong>0</strong> = completely irrelevant &nbsp;·&nbsp;
+           <strong>1</strong> = marginally relevant &nbsp;·&nbsp;
+           <strong>2</strong> = somewhat relevant &nbsp;·&nbsp;
+           <strong>3</strong> = relevant &nbsp;·&nbsp;
+           <strong>4</strong> = highly relevant</p>
+        <p>The results are re-ordered by <code>@search.reranker_score</code> and this score — not the
+           original RRF score — is used for all downstream confidence decisions. Requires Azure AI Search
+           Standard S1 or higher tier. Controlled by <code>AZURE_SEARCH_SEMANTIC_ENABLED</code>.</p>
+        <div class="tags">
+          <span class="tag orange">Semantic Reranker</span>
+          <span class="tag orange">@search.reranker_score</span>
+          <span class="tag">0–4 scale</span>
+          <span class="tag">neural cross-encoder</span>
+          <span class="tag">S1+ tier required</span>
+        </div>
+      </div>
+
+      <div class="card" style="border-left: 3px solid var(--danger);">
+        <h3>🚫 Minimum Score Filter</h3>
+        <p>After reranking, chunks with <code>@search.reranker_score &lt; 1.0</code> are dropped before
+           the context window is built. This prevents weakly-matched documents from polluting the
+           context sent to GPT-4o. The floor is set by <code>MIN_RERANKER_SCORE = 1.0</code> in
+           <code>query.py</code> and can be adjusted if queries are too restrictive.</p>
+        <p>When the semantic reranker is disabled (fallback mode), this filter is not applied and all
+           15 RRF results pass through to the context builder.</p>
+        <div class="tags">
+          <span class="tag">MIN_RERANKER_SCORE = 1.0</span>
+          <span class="tag">pre-context filtering</span>
+        </div>
+      </div>
+
+      <div class="card green">
+        <h3>⬡ Source Type Scoring Profile</h3>
+        <p>An optional tag-based <strong>scoring profile</strong> (<code>source-boost</code>) can
+           amplify results from a specific source type during the RRF phase. The index stores a
+           <code>source_tags</code> field (<code>["wiki"]</code>, <code>["code"]</code>, or
+           <code>["test"]</code>) for every chunk. When <code>BOOST_SOURCE_TYPE</code> is set in
+           <code>.env</code>, matching documents receive a <strong>3× multiplicative boost</strong>
+           applied to their BM25 score before RRF fusion.</p>
+        <p>Example: <code>BOOST_SOURCE_TYPE=wiki</code> prioritises documentation answers.
+           <code>BOOST_SOURCE_TYPE=test</code> prioritises test case results. Leave empty (default)
+           for equal treatment of all sources.</p>
+        <div class="tags">
+          <span class="tag green">ScoringProfile: source-boost</span>
+          <span class="tag green">TagScoringFunction · boost 3×</span>
+          <span class="tag">source_tags field</span>
+          <span class="tag">BOOST_SOURCE_TYPE env var</span>
         </div>
       </div>
     </div>
@@ -448,8 +504,8 @@
         <!-- ── Gate 3: High check ── -->
         <polygon points="400,280 530,310 400,340 270,310" fill="#0e1f16" stroke="#3fb950" stroke-width="1.5"/>
         <text x="400" y="302" text-anchor="middle" font-size="9" font-weight="600" fill="#3fb950">Gate 3</text>
-        <text x="400" y="316" text-anchor="middle" font-size="8" fill="#e6edf3">score &gt; 0.03  AND  chunks ≥ 4?</text>
-        <text x="400" y="328" text-anchor="middle" font-size="7.5" fill="#8b949e">top @search.score of result[0]</text>
+        <text x="400" y="316" text-anchor="middle" font-size="8" fill="#e6edf3">reranker_score ≥ 2.5  AND  chunks ≥ 3?</text>
+        <text x="400" y="328" text-anchor="middle" font-size="7.5" fill="#8b949e">top @search.reranker_score (0–4 scale)</text>
 
         <!-- yes → high -->
         <line x1="530" y1="310" x2="620" y2="310" stroke="#3fb950" stroke-width="1.5" marker-end="url(#c-green)"/>
@@ -461,7 +517,7 @@
         <line x1="270" y1="310" x2="160" y2="310" stroke="#d29922" stroke-width="1.5" marker-end="url(#c-warn)"/>
         <text x="213" y="304" text-anchor="middle" font-size="8" fill="#d29922">no →</text>
         <rect x="30" y="278" width="128" height="64" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
-        <text x="94" y="297" text-anchor="middle" font-size="8" fill="#8b949e">score &gt; 0.01</text>
+        <text x="94" y="297" text-anchor="middle" font-size="8" fill="#8b949e">score ≥ 1.5</text>
         <text x="94" y="309" text-anchor="middle" font-size="8" fill="#8b949e">AND chunks ≥ 2?</text>
         <text x="58" y="330" text-anchor="middle" font-size="8" fill="#d29922">yes → MEDIUM</text>
         <text x="122" y="330" text-anchor="middle" font-size="8" fill="#f85149">no → LOW</text>
@@ -489,9 +545,10 @@
       </div>
 
       <div class="card green">
-        <h3>Gate 3 — Score thresholds</h3>
-        <p>If neither earlier gate fired, confidence is determined by the <code>@search.score</code> of the
-           top result combined with the total number of chunks retrieved:</p>
+        <h3>Gate 3 — Reranker score thresholds</h3>
+        <p>If neither earlier gate fired, confidence is determined by the <code>@search.reranker_score</code>
+           of the top result (0–4 scale from the semantic reranker) combined with the number of chunks
+           that passed the minimum score filter:</p>
         <table class="gate-table">
           <thead>
             <tr>
@@ -502,42 +559,56 @@
           </thead>
           <tbody>
             <tr>
-              <td>score &gt; 0.03 &nbsp;&amp;&amp;&nbsp; chunks ≥ 4</td>
+              <td>reranker_score ≥ 2.5 &nbsp;&amp;&amp;&nbsp; chunks ≥ 3</td>
               <td><span class="badge high">high</span></td>
-              <td>Strong RRF score (ranked well in both search lanes) backed by 4 or more corroborating chunks. The answer is well-supported.</td>
+              <td>Neural cross-encoder rated the top chunk as clearly relevant (≥ 2.5/4), backed by at least 3 corroborating chunks. The answer is well-supported across multiple sources.</td>
             </tr>
             <tr>
-              <td>score &gt; 0.01 &nbsp;&amp;&amp;&nbsp; chunks ≥ 2</td>
+              <td>reranker_score ≥ 1.5 &nbsp;&amp;&amp;&nbsp; chunks ≥ 2</td>
               <td><span class="badge medium">medium</span></td>
-              <td>Moderate relevance — at least one lane ranked the document well, and there is a second chunk providing partial coverage. Answer is likely correct but incomplete.</td>
+              <td>Moderate semantic relevance — the reranker found a reasonable match and there is at least one corroborating chunk. Answer is likely correct but context coverage is partial.</td>
             </tr>
             <tr>
               <td>anything else</td>
               <td><span class="badge low">low</span></td>
-              <td>Very low RRF score or only a single chunk retrieved. The answer may be speculative or based on a weakly-matched document.</td>
+              <td>Low reranker score or very few chunks survived the min-score filter. The answer may be speculative or based on weakly-matched content.</td>
             </tr>
           </tbody>
         </table>
-        <div class="tags" style="margin-top:1rem;">
-          <span class="tag warn">top @search.score = chunks[0].score</span>
-          <span class="tag">typical RRF range 0.01–0.06</span>
+        <p style="margin-top:0.85rem; font-size:0.8rem; color:var(--muted);">
+          <strong style="color:var(--text);">Fallback (semantic disabled):</strong> when
+          <code>AZURE_SEARCH_SEMANTIC_ENABLED=false</code>, the original RRF <code>@search.score</code>
+          thresholds apply instead: &gt; 0.03 + 4 chunks → HIGH; &gt; 0.01 + 2 chunks → MEDIUM; else LOW.
+        </p>
+        <div class="tags" style="margin-top:0.85rem;">
+          <span class="tag warn">top @search.reranker_score (0–4)</span>
+          <span class="tag">chunks after min-score filter</span>
         </div>
       </div>
     </div>
 
     <!-- ── Score range bar ── -->
     <div class="threshold-bar">
-      <h2>RRF Score Range Reference</h2>
-      <div class="bar-track">
-        <div class="bar-marker" style="left: 16.6%;" data-label="0.01 — medium floor"></div>
-        <div class="bar-marker" style="left: 50%;"   data-label="0.03 — high floor"></div>
-        <div class="bar-marker" style="left: 83.3%;" data-label="0.05 — very strong"></div>
+      <h2>Reranker Score Range Reference &nbsp;<span style="font-size:0.78rem;font-weight:400;color:var(--muted);">@search.reranker_score · 0–4 scale</span></h2>
+      <div class="bar-track" style="background: linear-gradient(
+        to right,
+        rgba(248,81,73,0.35)  0%,
+        rgba(248,81,73,0.35)  25%,
+        rgba(210,153,34,0.35) 25%,
+        rgba(210,153,34,0.35) 62.5%,
+        rgba(63,185,80,0.35)  62.5%,
+        rgba(63,185,80,0.35)  100%
+      );">
+        <div class="bar-marker" style="left: 25%;"   data-label="1.0 — min-score floor (filtered below)"></div>
+        <div class="bar-marker" style="left: 37.5%;" data-label="1.5 — medium floor"></div>
+        <div class="bar-marker" style="left: 62.5%;" data-label="2.5 — high floor"></div>
       </div>
       <div class="bar-labels">
-        <span><span class="dot low"></span> 0.00–0.01 → low</span>
-        <span><span class="dot medium"></span> 0.01–0.03 → medium (with ≥2 chunks)</span>
-        <span><span class="dot high"></span> 0.03+ → high (with ≥4 chunks)</span>
-        <span style="color:#6e7681;">max ≈ 0.06</span>
+        <span><span class="dot low"></span> &lt; 1.0 → filtered out</span>
+        <span><span class="dot low"></span> 1.0–1.5 → low</span>
+        <span><span class="dot medium"></span> 1.5–2.5 → medium (with ≥2 chunks)</span>
+        <span><span class="dot high"></span> 2.5+ → high (with ≥3 chunks)</span>
+        <span style="color:#6e7681;">max = 4.0</span>
       </div>
     </div>
 

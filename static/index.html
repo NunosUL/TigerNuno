@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TigerChat · Wiki Ingestion</title>
+  <title>TigerChat · Ingestion Pipeline</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -255,22 +255,346 @@
       word-break: break-all;
     }
     .blob-name span { color: var(--text); }
+
+    /* ── Pipeline Settings ── */
+    .settings {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+    .settings-header {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 0.85rem;
+    }
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .setting-info { flex: 1; }
+    .setting-label {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .setting-desc {
+      font-size: 0.73rem;
+      color: var(--muted);
+      margin-top: 0.15rem;
+    }
+
+    /* ── Repo picker ── */
+    .repo-picker {
+      margin-top: 0.9rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--border);
+    }
+    .repo-picker.hidden { display: none; }
+
+    .repo-picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      padding: 0.1rem 0;
+    }
+    .repo-picker-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .repo-picker-title {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+    }
+    .repo-count-badge {
+      font-size: 0.65rem;
+      padding: 0.1rem 0.5rem;
+      border-radius: 999px;
+      background: var(--accent-glow);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      display: none;
+    }
+    .repo-count-badge.visible { display: inline-block; }
+    .repo-picker-chevron {
+      font-size: 0.7rem;
+      color: var(--muted);
+      transition: transform 0.2s;
+    }
+    .repo-picker-chevron.open { transform: rotate(180deg); }
+
+    .repo-picker-body {
+      display: none;
+      margin-top: 0.75rem;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .repo-picker-body.open { display: flex; }
+
+    .repo-search-wrap {
+      position: relative;
+    }
+    .repo-search {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.82rem;
+      padding: 0.45rem 0.75rem 0.45rem 2rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .repo-search:focus { border-color: var(--accent); }
+    .repo-search::placeholder { color: var(--muted); }
+    .repo-search-icon {
+      position: absolute;
+      left: 0.6rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.75rem;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .repo-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+    .repo-action-btn {
+      font-size: 0.72rem;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+      transition: color 0.15s, background 0.15s;
+    }
+    .repo-action-btn:hover { color: var(--accent); background: var(--accent-glow); }
+
+    .repo-list {
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .repo-item {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.4rem 0.6rem;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.15s;
+      user-select: none;
+    }
+    .repo-item:hover { background: var(--surface2); }
+    .repo-item input[type="checkbox"] { display: none; }
+    .repo-checkbox {
+      width: 15px; height: 15px;
+      border-radius: 4px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      font-size: 9px;
+      color: transparent;
+    }
+    .repo-item.checked .repo-checkbox {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+    .repo-name {
+      font-size: 0.8rem;
+      color: var(--muted);
+      transition: color 0.15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .repo-item.checked .repo-name { color: var(--text); }
+    .repo-item.hidden-filter { display: none; }
+
+    .repo-validation {
+      font-size: 0.72rem;
+      color: var(--error);
+      display: none;
+      padding: 0.2rem 0;
+    }
+    .repo-validation.visible { display: block; }
+
+    .repo-loading {
+      font-size: 0.8rem;
+      color: var(--muted);
+      padding: 0.5rem 0;
+      text-align: center;
+    }
+
+    /* Toggle switch */
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      transition: all 0.2s;
+    }
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      width: 16px; height: 16px;
+      left: 3px; top: 3px;
+      background: var(--muted);
+      border-radius: 50%;
+      transition: all 0.2s;
+    }
+    .toggle input:checked + .toggle-slider {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+    }
+    .toggle input:checked + .toggle-slider::before {
+      transform: translateX(20px);
+      background: var(--accent);
+    }
+
+    /* Source checkboxes */
+    .sources-row {
+      margin-top: 0.9rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--border);
+    }
+    .sources-row.hidden { display: none; }
+    .setting-sublabel {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+    .source-checks { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .source-chip-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.18s;
+      background: var(--bg);
+      user-select: none;
+    }
+    .source-chip-label input { display: none; }
+    .source-chip-label.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <h1>Wiki Ingestion Pipeline</h1>
-    <p>Crawl · Chunk · Embed · Index · Upload</p>
+    <h1>Ingestion Pipeline</h1>
+    <p>Wiki · Source Code · Test Plans &nbsp;→&nbsp; Crawl · Chunk · Embed · Index · Upload</p>
     <div style="display:flex;gap:1.25rem;justify-content:center;margin-top:0.6rem;">
       <a href="/" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">← Home</a>
-      <a href="/chat" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">💬 Chat with the Wiki →</a>
+      <a href="/chat" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">💬 Chat →</a>
       <a href="/synergies" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">⬡ Pipeline Synergies →</a>
       <a href="/about" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">How does this work? →</a>
     </div>
   </div>
 
   <div class="card">
+
+    <!-- Pipeline settings -->
+    <div class="settings">
+      <div class="settings-header">Pipeline Settings</div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Include crawling</div>
+          <div class="setting-desc">Fetch fresh content from Azure DevOps before indexing. Disable to re-index the last snapshot without crawling.</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="crawlToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="sources-row" id="sourcesRow">
+        <div class="setting-sublabel">Sources to crawl</div>
+        <div class="source-checks">
+          <label class="source-chip-label" id="lbl-wiki">
+            <input type="checkbox" id="srcWiki">
+            Wiki
+          </label>
+          <label class="source-chip-label" id="lbl-code">
+            <input type="checkbox" id="srcCode">
+            Source Code
+          </label>
+          <label class="source-chip-label" id="lbl-tests">
+            <input type="checkbox" id="srcTests">
+            Test Plans
+          </label>
+        </div>
+
+        <!-- Repo picker — shown only when Source Code is checked -->
+        <div class="repo-picker hidden" id="repoPicker">
+          <div class="repo-picker-header" id="repoPickerHeader">
+            <div class="repo-picker-header-left">
+              <span class="repo-picker-title">Repositories</span>
+              <span class="repo-count-badge" id="repoCountBadge">0 selected</span>
+            </div>
+            <span class="repo-picker-chevron" id="repoChevron">▼</span>
+          </div>
+
+          <div class="repo-picker-body" id="repoPickerBody">
+            <div class="repo-search-wrap">
+              <span class="repo-search-icon">🔍</span>
+              <input class="repo-search" id="repoSearch" placeholder="Filter repositories…" autocomplete="off">
+            </div>
+            <div class="repo-actions">
+              <button class="repo-action-btn" id="repoSelectAll">Select all</button>
+              <button class="repo-action-btn" id="repoDeselectAll">Deselect all</button>
+            </div>
+            <div class="repo-list" id="repoList">
+              <div class="repo-loading" id="repoLoading">Loading repositories…</div>
+            </div>
+            <div class="repo-validation" id="repoValidation">Select at least one repository to crawl source code.</div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <button id="startBtn">
       <span class="btn-icon">⚡</span> Start Ingestion
@@ -315,7 +639,7 @@
       <div class="stat-grid">
         <div class="stat highlight">
           <div class="stat-value" id="s-pages">—</div>
-          <div class="stat-label">Pages</div>
+          <div class="stat-label">Total Records</div>
         </div>
         <div class="stat">
           <div class="stat-value" id="s-skipped">—</div>
@@ -334,6 +658,20 @@
           <div class="stat-label">Failed</div>
         </div>
       </div>
+      <div class="stat-grid" id="source-breakdown" style="margin-top:0.75rem;display:none;">
+        <div class="stat">
+          <div class="stat-value" id="s-wiki">—</div>
+          <div class="stat-label">Wiki Pages</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="s-code">—</div>
+          <div class="stat-label">Code Files</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="s-tests">—</div>
+          <div class="stat-label">Test Cases</div>
+        </div>
+      </div>
       <div class="blob-name">Blob: <span id="s-blob">—</span></div>
     </div>
 
@@ -344,6 +682,139 @@
     const logEl = document.getElementById('log');
     const summaryEl = document.getElementById('summary');
     const STEPS = ['crawl', 'chunk', 'embed', 'index', 'upload'];
+
+    // ── Settings toggles ──────────────────────────────────────────────────────
+    const crawlToggle = document.getElementById('crawlToggle');
+    const sourcesRow  = document.getElementById('sourcesRow');
+
+    crawlToggle.addEventListener('change', () => {
+      sourcesRow.classList.toggle('hidden', !crawlToggle.checked);
+      if (!crawlToggle.checked) setRepoPicker(false);
+    });
+
+    // Source chip toggle (checked ↔ active style)
+    [
+      ['srcWiki',  'lbl-wiki'],
+      ['srcCode',  'lbl-code'],
+      ['srcTests', 'lbl-tests'],
+    ].forEach(([cbId, lblId]) => {
+      const cb  = document.getElementById(cbId);
+      const lbl = document.getElementById(lblId);
+      cb.addEventListener('change', () => {
+        lbl.classList.toggle('active', cb.checked);
+        if (cbId === 'srcCode') setRepoPicker(cb.checked);
+      });
+    });
+
+    // ── Repo picker ───────────────────────────────────────────────────────────
+    const repoPicker     = document.getElementById('repoPicker');
+    const repoPickerHeader = document.getElementById('repoPickerHeader');
+    const repoPickerBody = document.getElementById('repoPickerBody');
+    const repoChevron    = document.getElementById('repoChevron');
+    const repoList       = document.getElementById('repoList');
+    const repoSearch     = document.getElementById('repoSearch');
+    const repoCountBadge = document.getElementById('repoCountBadge');
+    const repoValidation = document.getElementById('repoValidation');
+    const repoLoading    = document.getElementById('repoLoading');
+
+    let allRepos = [];       // [{id, name}]
+    let reposLoaded = false;
+
+    function setRepoPicker(visible) {
+      repoPicker.classList.toggle('hidden', !visible);
+      if (visible && !reposLoaded) loadRepos();
+    }
+
+    async function loadRepos() {
+      repoLoading.style.display = 'block';
+      try {
+        const res = await fetch('/api/repos');
+        const data = await res.json();
+        allRepos = data.repos || [];
+        reposLoaded = true;
+        renderRepoList(allRepos);
+      } catch (e) {
+        repoLoading.textContent = 'Failed to load repositories.';
+        repoLoading.style.color = 'var(--error)';
+      }
+    }
+
+    function renderRepoList(repos) {
+      repoLoading.style.display = 'none';
+      // Preserve existing checked state
+      const checked = new Set(getSelectedRepos());
+      // Clear all but loading indicator
+      Array.from(repoList.children).forEach(el => {
+        if (el !== repoLoading) el.remove();
+      });
+      repos.forEach(repo => {
+        const item = document.createElement('label');
+        item.className = 'repo-item' + (checked.has(repo.name) ? ' checked' : '');
+        item.dataset.name = repo.name;
+        item.innerHTML = `
+          <input type="checkbox" value="${repo.name}" ${checked.has(repo.name) ? 'checked' : ''}>
+          <div class="repo-checkbox">${checked.has(repo.name) ? '✓' : ''}</div>
+          <span class="repo-name" title="${repo.name}">${repo.name}</span>`;
+        item.addEventListener('click', (e) => {
+          e.preventDefault();
+          const cb = item.querySelector('input');
+          cb.checked = !cb.checked;
+          item.classList.toggle('checked', cb.checked);
+          item.querySelector('.repo-checkbox').textContent = cb.checked ? '✓' : '';
+          updateRepoBadge();
+          repoValidation.classList.remove('visible');
+        });
+        repoList.appendChild(item);
+      });
+      updateRepoBadge();
+    }
+
+    function getSelectedRepos() {
+      return Array.from(repoList.querySelectorAll('input[type="checkbox"]:checked'))
+        .map(cb => cb.value);
+    }
+
+    function updateRepoBadge() {
+      const n = getSelectedRepos().length;
+      repoCountBadge.textContent = n === 0 ? '' : `${n} selected`;
+      repoCountBadge.classList.toggle('visible', n > 0);
+    }
+
+    // Collapse/expand
+    repoPickerHeader.addEventListener('click', () => {
+      const isOpen = repoPickerBody.classList.toggle('open');
+      repoChevron.classList.toggle('open', isOpen);
+      if (isOpen && !reposLoaded) loadRepos();
+    });
+
+    // Filter
+    repoSearch.addEventListener('input', () => {
+      const q = repoSearch.value.toLowerCase();
+      repoList.querySelectorAll('.repo-item').forEach(item => {
+        item.classList.toggle('hidden-filter', !item.dataset.name.toLowerCase().includes(q));
+      });
+    });
+
+    // Select / deselect all (filtered)
+    document.getElementById('repoSelectAll').addEventListener('click', () => {
+      repoList.querySelectorAll('.repo-item:not(.hidden-filter)').forEach(item => {
+        const cb = item.querySelector('input');
+        cb.checked = true;
+        item.classList.add('checked');
+        item.querySelector('.repo-checkbox').textContent = '✓';
+      });
+      updateRepoBadge();
+      repoValidation.classList.remove('visible');
+    });
+    document.getElementById('repoDeselectAll').addEventListener('click', () => {
+      repoList.querySelectorAll('.repo-item:not(.hidden-filter)').forEach(item => {
+        const cb = item.querySelector('input');
+        cb.checked = false;
+        item.classList.remove('checked');
+        item.querySelector('.repo-checkbox').textContent = '';
+      });
+      updateRepoBadge();
+    });
 
     function now() {
       return new Date().toLocaleTimeString('en-GB', { hour12: false });
@@ -369,6 +840,7 @@
     function resetUI() {
       logEl.innerHTML = '';
       summaryEl.style.display = 'none';
+      document.getElementById('source-breakdown').style.display = 'none';
       STEPS.forEach(s => {
         const el = document.getElementById(`pill-${s}`);
         el.className = 'pill';
@@ -383,15 +855,45 @@
       document.getElementById('s-uploaded').textContent = s.uploaded ?? '—';
       document.getElementById('s-failed').textContent = s.failed ?? 0;
       document.getElementById('s-blob').textContent = s.blob ?? '—';
+
+      const hasBreakdown = s.wiki_count != null || s.code_count != null || s.test_count != null;
+      if (hasBreakdown) {
+        document.getElementById('s-wiki').textContent = s.wiki_count ?? '—';
+        document.getElementById('s-code').textContent = s.code_count ?? '—';
+        document.getElementById('s-tests').textContent = s.test_count ?? '—';
+        document.getElementById('source-breakdown').style.display = 'grid';
+      }
+
       summaryEl.style.display = 'block';
     }
 
     btn.addEventListener('click', () => {
+      // Validate: if code crawl is on, at least one repo must be selected
+      const codeChecked = document.getElementById('srcCode').checked;
+      if (crawlToggle.checked && codeChecked) {
+        const selected = getSelectedRepos();
+        if (selected.length === 0) {
+          repoValidation.classList.add('visible');
+          // Expand the picker so the user can see the message
+          repoPickerBody.classList.add('open');
+          repoChevron.classList.add('open');
+          return;
+        }
+      }
+
       resetUI();
       btn.disabled = true;
       btn.innerHTML = '<span class="btn-icon">⏳</span> Running…';
 
-      const es = new EventSource('/ingest/stream');
+      const selectedRepos = crawlToggle.checked && codeChecked ? getSelectedRepos() : [];
+      const params = new URLSearchParams({
+        crawl:  crawlToggle.checked,
+        wiki:   document.getElementById('srcWiki').checked,
+        code:   codeChecked,
+        tests:  document.getElementById('srcTests').checked,
+        repos:  selectedRepos.join(','),
+      });
+      const es = new EventSource('/ingest/stream?' + params.toString());
 
       es.onmessage = (e) => {
         const evt = JSON.parse(e.data);

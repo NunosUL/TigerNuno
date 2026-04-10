@@ -1,29 +1,33 @@
 """
 RAG Ingestion Pipeline
 ======================
-1. Crawl  — fetches all pages from Azure DevOps Wiki via REST API and saves a
-            JSONL snapshot to Azure Blob Storage
-2. Chunk  — splits changed pages into chunks (LangChain RecursiveCharacterTextSplitter)
-            using MD5 hash change detection to skip unchanged pages
-3. Embed  — generates vectors via Azure OpenAI (text-embedding-3-large)
-4. Index  — creates/ensures Azure AI Search index (HNSW vector + full-text fields)
-5. Upload — upserts documents + vectors into Azure AI Search
+1. Crawl  — fetches content from three Azure DevOps sources:
+              • Wiki pages   (Azure DevOps Wiki REST API)
+              • Code files   (Azure DevOps Git repositories)
+              • Test cases   (Azure DevOps Test Management)
+            Saves a combined JSONL snapshot to Azure Blob Storage.
+2. Chunk  — splits changed records into chunks using LangChain's
+            RecursiveCharacterTextSplitter; skips unchanged records
+            via MD5 hash change detection.
+3. Embed  — generates 3072-dim vectors via Azure OpenAI text-embedding-3-large.
+4. Index  — creates/ensures Azure AI Search index (HNSW vector + full-text).
+5. Upload — upserts documents + vectors into Azure AI Search and saves
+            the updated hash manifest.
 
-Change detection: a hash manifest (wiki_hashes.json) is stored in the blob
-container after each run. On subsequent runs, only pages whose content has
-changed are re-embedded and re-uploaded. Unchanged pages are skipped entirely.
-
-Can be used as a module (run_pipeline generator) or standalone CLI.
+Source toggles: set CRAWL_WIKI / CRAWL_CODE / CRAWL_TESTS to "false" in .env
+to disable individual sources without changing code.
 """
 
-import base64
 import hashlib
+import html as html_lib
 import json
 import logging
 import os
 import re
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Generator
+import base64
 
 import markdown
 import requests
@@ -40,6 +44,13 @@ from azure.search.documents.indexes.models import (
     SimpleField,
     VectorSearch,
     VectorSearchProfile,
+    SemanticConfiguration,
+    SemanticField,
+    SemanticPrioritizedFields,
+    SemanticSearch,
+    ScoringProfile,
+    TagScoringFunction,
+    TagScoringParameters,
 )
 from azure.storage.blob import BlobServiceClient
 from bs4 import BeautifulSoup
@@ -53,7 +64,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Config — Azure DevOps (crawl)
+# Config — Azure DevOps identity
 # ---------------------------------------------------------------------------
 
 PAT     = os.environ["AZURE_DEVOPS_PAT"]
@@ -61,26 +72,83 @@ ORG     = os.environ.get("DEVOPS_ORG", "ulpsi")
 PROJECT = os.environ.get("DEVOPS_PROJECT", "NetProjects10")
 WIKI    = os.environ.get("DEVOPS_WIKI", "NetProjects10.wiki")
 
-_API_BASE    = f"https://dev.azure.com/{ORG}/{PROJECT}/_apis/wiki/wikis/{WIKI}"
+_API_BASE    = f"https://dev.azure.com/{ORG}/{PROJECT}/_apis"
+_WIKI_BASE   = f"{_API_BASE}/wiki/wikis/{WIKI}"
 _API_VERSION = "7.1"
 _encoded     = base64.b64encode(f":{PAT}".encode()).decode()
-_HEADERS     = {
-    "Authorization": f"Basic {_encoded}",
-    "Content-Type": "application/json",
-}
+_HEADERS     = {"Authorization": f"Basic {_encoded}", "Content-Type": "application/json"}
+_DL_HEADERS  = {"Authorization": f"Basic {_encoded}"}   # no Content-Type for downloads
+
+# ---------------------------------------------------------------------------
+# Config — source toggles
+# ---------------------------------------------------------------------------
+
+CRAWL_WIKI  = os.environ.get("CRAWL_WIKI",  "true").lower() == "true"
+CRAWL_CODE  = os.environ.get("CRAWL_CODE",  "true").lower() == "true"
+CRAWL_TESTS = os.environ.get("CRAWL_TESTS", "true").lower() == "true"
+
+# ---------------------------------------------------------------------------
+# Config — code file filtering
+# ---------------------------------------------------------------------------
+
+CODE_MAX_FILE_BYTES = 100 * 1024  # 100 KB
+
+CODE_EXTENSIONS = frozenset({
+    # .NET / C#
+    ".cs", ".csproj", ".sln", ".config", ".resx",
+    # Web / Razor
+    ".razor", ".html", ".htm", ".js", ".ts", ".less", ".css",
+    # Data / config
+    ".json", ".xml", ".xslt",
+})
+
+CODE_FILENAMES: frozenset[str] = frozenset()  # no special filenames for this stack
+
+SKIP_DIRS = frozenset({
+    "node_modules", "__pycache__", ".git", "bin", "obj",
+    "dist", "build", ".vs", ".idea", ".vscode", "coverage",
+    ".terraform", "wwwroot", ".nuget", "packages", "vendor",
+    ".next", ".nuxt", "out", "target", ".cache",
+})
+
+SKIP_PATH_PARTS = frozenset({
+    "migrations", "Migrations", "migrate",
+    "generated", "Generated", "auto-generated",
+})
+
+SKIP_FILENAMES = frozenset({
+    "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+    "poetry.lock", "Pipfile.lock", "packages.lock.json",
+    "composer.lock", "Gemfile.lock", "cargo.lock",
+})
+
+SKIP_SUFFIXES = (
+    ".min.js", ".min.css", ".bundle.js", ".bundle.min.js",
+    ".g.cs", ".designer.cs", ".generated.cs", ".g.dart",
+)
+
+AUTO_GENERATED_MARKERS = frozenset({
+    "// <auto-generated",
+    "// <autogenerated",
+    "/* auto-generated",
+    "# this file is auto-generated",
+    "// generated by",
+    "// do not edit",
+    "<autogenerated>",
+})
 
 # ---------------------------------------------------------------------------
 # Config — Storage, OpenAI, Search
 # ---------------------------------------------------------------------------
 
-STORAGE_CONN  = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
-CONTAINER     = os.environ.get("AZURE_STORAGE_CONTAINER", "wiki-crawl")
+STORAGE_CONN       = os.environ["AZURE_STORAGE_CONNECTION_STRING"]
+CONTAINER          = os.environ.get("AZURE_STORAGE_CONTAINER", "wiki-crawl")
 HASH_MANIFEST_BLOB = "wiki_hashes.json"
 
-AOAI_ENDPOINT            = os.environ["AZURE_OPENAI_ENDPOINT"]
-AOAI_API_KEY             = os.environ["AZURE_OPENAI_API_KEY"]
+AOAI_ENDPOINT             = os.environ["AZURE_OPENAI_ENDPOINT"]
+AOAI_API_KEY              = os.environ["AZURE_OPENAI_API_KEY"]
 AOAI_EMBEDDING_DEPLOYMENT = os.environ.get("AZURE_OPENAI_EMBEDDING_DEPLOYMENT", "text-embedding-3-large")
-AOAI_API_VERSION         = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01")
+AOAI_API_VERSION          = os.environ.get("AZURE_OPENAI_API_VERSION", "2024-02-01")
 
 SEARCH_ENDPOINT   = os.environ["AZURE_SEARCH_ENDPOINT"]
 SEARCH_API_KEY    = os.environ["AZURE_SEARCH_API_KEY"]
@@ -90,42 +158,37 @@ CHUNK_SIZE        = 1000
 CHUNK_OVERLAP     = 150
 EMBED_BATCH_SIZE  = 100
 UPLOAD_BATCH_SIZE = 100
-VECTOR_DIM        = 3072  # text-embedding-3-large
+VECTOR_DIM        = 3072
 
 
-# ---------------------------------------------------------------------------
-# Step 1: Crawl — Azure DevOps Wiki REST API
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# STEP 1A — Wiki crawl
+# ===========================================================================
 
-def _list_all_pages() -> list[dict]:
-    """Return a flat list of all wiki page metadata."""
-    url    = f"{_API_BASE}/pages"
-    params = {"path": "/", "recursionLevel": "full", "includeContent": "false", "api-version": _API_VERSION}
-    resp   = requests.get(url, headers=_HEADERS, params=params)
+def _list_all_wiki_pages() -> list[dict]:
+    params = {"path": "/", "recursionLevel": "full", "includeContent": "false",
+              "api-version": _API_VERSION}
+    resp = requests.get(f"{_WIKI_BASE}/pages", headers=_HEADERS, params=params)
     resp.raise_for_status()
     pages: list[dict] = []
-    _collect_pages(resp.json(), pages)
+    _collect_wiki_pages(resp.json(), pages)
     return pages
 
 
-def _collect_pages(node: dict, acc: list[dict]) -> None:
-    acc.append({"path": node.get("path", "/"), "remote_url": node.get("remoteUrl", ""), "order": node.get("order", 0)})
+def _collect_wiki_pages(node: dict, acc: list[dict]) -> None:
+    acc.append({"path": node.get("path", "/"), "remote_url": node.get("remoteUrl", "")})
     for child in node.get("subPages", []):
-        _collect_pages(child, acc)
+        _collect_wiki_pages(child, acc)
 
 
-def _fetch_page_content(path: str) -> dict:
-    """Fetch a single wiki page — returns Markdown, rendered HTML, and extracted links."""
-    url    = f"{_API_BASE}/pages"
+def _fetch_wiki_page(path: str) -> dict:
     params = {"path": path, "includeContent": "true", "api-version": _API_VERSION}
-    resp   = requests.get(url, headers=_HEADERS, params=params)
+    resp = requests.get(f"{_WIKI_BASE}/pages", headers=_HEADERS, params=params)
     resp.raise_for_status()
     data = resp.json()
-
     md_content   = data.get("content", "")
     html_content = markdown.markdown(md_content, extensions=["extra", "toc", "tables", "fenced_code"])
-    links        = _extract_links(html_content, base_path=path)
-
+    links        = _extract_wiki_links(html_content, base_path=path)
     return {
         "path":       path,
         "remote_url": data.get("remoteUrl", ""),
@@ -136,7 +199,7 @@ def _fetch_page_content(path: str) -> dict:
     }
 
 
-def _extract_links(html: str, base_path: str) -> list[str]:
+def _extract_wiki_links(html: str, base_path: str) -> list[str]:
     soup      = BeautifulSoup(html, "html.parser")
     wiki_base = f"https://dev.azure.com/{ORG}/{PROJECT}/_wiki/wikis/{WIKI}"
     links     = []
@@ -152,29 +215,411 @@ def _extract_links(html: str, base_path: str) -> list[str]:
     return list(dict.fromkeys(links))
 
 
+# ===========================================================================
+# STEP 1B — Code crawl
+# ===========================================================================
+
+def _should_index_file(item: dict) -> bool:
+    """Return True if this git item should be included in the index."""
+    if item.get("gitObjectType") != "blob":
+        return False
+
+    path     = item.get("path", "")
+    parts    = path.strip("/").split("/")
+    filename = parts[-1]
+    _, ext   = os.path.splitext(filename)
+
+    # Skip by directory component
+    if any(p in SKIP_DIRS for p in parts[:-1]):
+        return False
+    if any(p in SKIP_PATH_PARTS for p in parts):
+        return False
+
+    # Skip by exact filename
+    if filename in SKIP_FILENAMES:
+        return False
+
+    # Skip by suffix (e.g. .min.js, .g.cs)
+    if any(filename.endswith(s) for s in SKIP_SUFFIXES):
+        return False
+
+    # Skip .lock extension
+    if ext == ".lock":
+        return False
+
+    # Allow by exact filename (Dockerfile, Makefile, …)
+    if filename in CODE_FILENAMES:
+        return True
+
+    return ext.lower() in CODE_EXTENSIONS
+
+
+def _crawl_code_files(selected_repos: list[str] | None = None):
+    """
+    Generator yielding ("event", message_str) or ("record", dict).
+    Crawls git repositories in the project. If selected_repos is provided (non-empty),
+    only those repos are crawled; otherwise all non-disabled repos are crawled.
+    """
+    repos_resp = requests.get(
+        f"{_API_BASE}/git/repositories",
+        headers=_HEADERS,
+        params={"api-version": _API_VERSION},
+    )
+    repos_resp.raise_for_status()
+    all_repos = repos_resp.json().get("value", [])
+
+    # Apply user selection filter
+    if selected_repos:
+        sel_set = set(selected_repos)
+        repos = [r for r in all_repos if r["name"] in sel_set]
+        yield "event", f"[Code] {len(repos)} of {len(all_repos)} repos selected by user"
+    else:
+        repos = all_repos
+        yield "event", f"[Code] Found {len(repos)} repositor{'y' if len(repos)==1 else 'ies'}"
+
+    for idx, repo in enumerate(repos, 1):
+        repo_id   = repo["id"]
+        repo_name = repo["name"]
+
+        # Skip disabled repos
+        if repo.get("isDisabled"):
+            yield "event", f"[Code] Skipping {repo_name} (disabled)"
+            continue
+
+        # Skip empty repos — they have no defaultBranch and the items API returns 400
+        if not repo.get("defaultBranch"):
+            yield "event", f"[Code] Skipping {repo_name} (empty — no commits)"
+            continue
+
+        default_branch = repo["defaultBranch"].replace("refs/heads/", "")
+        yield "event", f"[Code] Scanning {repo_name} ({idx}/{len(repos)}) @ {default_branch}…"
+
+        # List all items from the default branch, with pagination
+        items: list[dict] = []
+        cont_token = None
+        while True:
+            params: dict = {
+                "recursionLevel": "full",
+                "api-version": _API_VERSION,
+                "$top": 2000,
+                "scopePath": "/",
+                "versionDescriptor.version": default_branch,
+                "versionDescriptor.versionType": "branch",
+            }
+            if cont_token:
+                params["continuationToken"] = cont_token
+            try:
+                ir = requests.get(
+                    f"{_API_BASE}/git/repositories/{repo_id}/items",
+                    headers=_HEADERS,
+                    params=params,
+                )
+                if not ir.ok:
+                    try:
+                        detail = ir.json().get("message") or ir.json().get("typeKey") or ir.text[:200]
+                    except Exception:
+                        detail = ir.text[:200]
+                    log.warning("Failed to list items for %s: %s — %s", repo_name, ir.status_code, detail)
+                    yield "event", f"[Code] Skipping {repo_name} — {ir.status_code}: {detail}"
+                    break
+                ir.raise_for_status()
+            except requests.exceptions.HTTPError:
+                break
+            except Exception as exc:
+                log.warning("Failed to list items for %s: %s", repo_name, exc)
+                yield "event", f"[Code] Skipping {repo_name} — {exc}"
+                break
+
+            items.extend(ir.json().get("value", []))
+            cont_token = ir.headers.get("x-ms-continuationtoken")
+            if not cont_token:
+                break
+
+        # First pass — identify eligible items without downloading
+        eligible = []
+        for item in items:
+            if not _should_index_file(item):
+                continue
+            file_size = item.get("size", 0) or 0
+            if file_size > CODE_MAX_FILE_BYTES:
+                log.debug("Skip (too large %d B): %s%s", file_size, repo_name, item.get("path", ""))
+                continue
+            eligible.append(item)
+
+        if not eligible:
+            yield "event", f"[Code] {repo_name}: no eligible files"
+            continue
+
+        yield "event", f"[Code] {repo_name}: {len(eligible)} eligible file(s) — downloading…"
+
+        # Second pass — download and index
+        file_count = 0
+        for dl_idx, item in enumerate(eligible, 1):
+            file_path = item.get("path", "")
+
+            try:
+                cr = requests.get(
+                    f"{_API_BASE}/git/repositories/{repo_id}/items",
+                    headers=_DL_HEADERS,
+                    params={"path": file_path, "download": "true", "api-version": _API_VERSION},
+                )
+                cr.raise_for_status()
+                content = cr.text
+            except Exception as exc:
+                log.warning("Failed to download %s%s: %s", repo_name, file_path, exc)
+                continue
+
+            if not content or not content.strip():
+                continue
+
+            if len(content.encode("utf-8", errors="replace")) > CODE_MAX_FILE_BYTES:
+                continue
+
+            if any(m in content[:400].lower() for m in AUTO_GENERATED_MARKERS):
+                continue
+
+            filename = file_path.split("/")[-1]
+            _, ext   = os.path.splitext(filename)
+            lang     = ext.lstrip(".") if ext else "text"
+            safe     = content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+            file_count += 1
+            yield "record", {
+                "path":       f"/repos/{repo_name}{file_path}",
+                "remote_url": f"https://dev.azure.com/{ORG}/{PROJECT}/_git/{repo_name}?path={file_path}",
+                "html":       f'<pre><code class="language-{lang}">{safe}</code></pre>',
+                "markdown":   content,
+                "links":      [],
+                "crawled_at": datetime.now(timezone.utc).isoformat(),
+            }
+
+            if dl_idx % 10 == 0 or dl_idx == len(eligible):
+                yield "event", f"[Code] {repo_name}: {dl_idx}/{len(eligible)} downloaded ({file_count} indexed)…"
+
+        yield "event", f"[Code] {repo_name}: done — {file_count}/{len(eligible)} file(s) indexed"
+
+
+# ===========================================================================
+# STEP 1C — Test Management crawl
+# ===========================================================================
+
+def _parse_test_steps(steps_xml: str) -> list[tuple[str, str]]:
+    """Parse the TCM steps XML blob into [(action, expected_result), …]."""
+    if not steps_xml:
+        return []
+    try:
+        root = ET.fromstring(steps_xml)
+    except ET.ParseError as exc:
+        log.warning("Could not parse test steps XML: %s", exc)
+        return []
+
+    result = []
+    for step in root.iter("step"):
+        if step.get("type") == "SharedStep":
+            result.append((f"[Shared step — work item {step.get('ref', '?')}]", ""))
+            continue
+
+        strings = step.findall("parameterizedString")
+        action  = expected = ""
+
+        if strings:
+            raw = strings[0].text or ""
+            action = BeautifulSoup(html_lib.unescape(raw), "html.parser").get_text(" ").strip()
+        if len(strings) > 1:
+            raw = strings[1].text or ""
+            expected = BeautifulSoup(html_lib.unescape(raw), "html.parser").get_text(" ").strip()
+
+        if action or expected:
+            result.append((action, expected))
+
+    return result
+
+
+def _format_test_case_markdown(work_item: dict, plan_name: str, suite_name: str) -> str:
+    """Serialise a test case work item to a rich Markdown document."""
+    fields = work_item.get("fields", {})
+    wi_id  = work_item.get("id", "")
+
+    title       = fields.get("System.Title", "")
+    raw_desc    = fields.get("System.Description", "") or ""
+    description = BeautifulSoup(raw_desc, "html.parser").get_text("\n").strip()
+    tags        = fields.get("System.Tags", "") or ""
+    priority    = fields.get("Microsoft.VSTS.Common.Priority", "")
+    auto_status = fields.get("Microsoft.VSTS.TCM.AutomationStatus", "")
+    steps_xml   = fields.get("Microsoft.VSTS.TCM.Steps", "") or ""
+    steps       = _parse_test_steps(steps_xml)
+
+    lines = [
+        f"# Test Case: {title}",
+        "",
+        f"**ID:** {wi_id}",
+        f"**Test Plan:** {plan_name}",
+        f"**Test Suite:** {suite_name}",
+    ]
+    if priority:
+        lines.append(f"**Priority:** {priority}")
+    if auto_status:
+        lines.append(f"**Automation Status:** {auto_status}")
+    if tags:
+        lines.append(f"**Tags / Feature Areas:** {tags}")
+
+    if description:
+        lines += ["", "## Description", "", description]
+
+    if steps:
+        lines += ["", "## Test Steps", "",
+                  "| Step | Action | Expected Result |",
+                  "|------|--------|-----------------|"]
+        for i, (action, expected) in enumerate(steps, 1):
+            a = action.replace("|", "\\|")
+            e = (expected or "—").replace("|", "\\|")
+            lines.append(f"| {i} | {a} | {e} |")
+
+    return "\n".join(lines)
+
+
+def _crawl_test_cases():
+    """
+    Generator yielding ("event", message_str) or ("record", dict).
+    Crawls all test plans → suites → test cases and batch-fetches work items.
+    Test cases appearing in multiple suites are deduplicated by work item ID.
+    """
+    # List all test plans
+    plans_resp = requests.get(
+        f"{_API_BASE}/testplan/plans",
+        headers=_HEADERS,
+        params={"api-version": _API_VERSION, "$top": 500},
+    )
+    plans_resp.raise_for_status()
+    plans = plans_resp.json().get("value", [])
+
+    yield "event", f"[Tests] Found {len(plans)} test plan(s)"
+
+    # Collect unique test case IDs → (plan_name, suite_name)
+    tc_map: dict[int, tuple[str, str]] = {}
+
+    for p_idx, plan in enumerate(plans, 1):
+        plan_id   = plan["id"]
+        plan_name = plan.get("name", f"Plan {plan_id}")
+
+        yield "event", f"[Tests] Scanning plan {p_idx}/{len(plans)}: {plan_name}…"
+
+        try:
+            sr = requests.get(
+                f"{_API_BASE}/testplan/plans/{plan_id}/suites",
+                headers=_HEADERS,
+                params={"api-version": _API_VERSION, "$top": 500},
+            )
+            sr.raise_for_status()
+            suites = sr.json().get("value", [])
+        except Exception as exc:
+            log.warning("Failed to list suites for plan %s: %s", plan_name, exc)
+            yield "event", f"[Tests] Could not list suites for {plan_name} — skipping"
+            continue
+
+        for suite in suites:
+            suite_id   = suite["id"]
+            suite_name = suite.get("name", f"Suite {suite_id}")
+
+            # Skip the root suite (always named the same as the plan)
+            if suite_name == plan_name:
+                continue
+
+            try:
+                tcr = requests.get(
+                    f"{_API_BASE}/testplan/plans/{plan_id}/suites/{suite_id}/testcase",
+                    headers=_HEADERS,
+                    params={"api-version": _API_VERSION, "$top": 500},
+                )
+                tcr.raise_for_status()
+                test_cases = tcr.json().get("value", [])
+            except Exception as exc:
+                log.warning("Failed to list test cases for %s/%s: %s", plan_name, suite_name, exc)
+                continue
+
+            for tc in test_cases:
+                wi_id = tc.get("workItem", {}).get("id")
+                if wi_id and wi_id not in tc_map:
+                    tc_map[wi_id] = (plan_name, suite_name)
+
+    yield "event", f"[Tests] Found {len(tc_map)} unique test case(s) — fetching details…"
+
+    # Batch-fetch work items (≤ 200 per call)
+    wi_ids   = list(tc_map.keys())
+    records  = []
+    n_batches = max(1, (len(wi_ids) + 199) // 200)
+
+    for i in range(0, len(wi_ids), 200):
+        batch_num = i // 200 + 1
+        batch   = wi_ids[i: i + 200]
+        ids_str = ",".join(str(x) for x in batch)
+        yield "event", f"[Tests] Fetching work item details — batch {batch_num}/{n_batches}…"
+        try:
+            wr = requests.get(
+                f"{_API_BASE}/wit/workitems",
+                headers=_HEADERS,
+                params={"ids": ids_str, "$expand": "all", "api-version": _API_VERSION},
+            )
+            wr.raise_for_status()
+            work_items = wr.json().get("value", [])
+        except Exception as exc:
+            log.warning("Batch work item fetch failed (batch %d): %s", i // 200, exc)
+            yield "event", f"[Tests] Warning: batch {batch_num} failed — {exc}"
+            continue
+
+        for wi in work_items:
+            wi_id               = wi.get("id")
+            plan_name, suite_name = tc_map.get(wi_id, ("", ""))
+            md_content          = _format_test_case_markdown(wi, plan_name, suite_name)
+            html_content        = markdown.markdown(md_content, extensions=["extra", "tables"])
+            records.append({
+                "path":       f"/test-cases/{wi_id}",
+                "remote_url": f"https://dev.azure.com/{ORG}/{PROJECT}/_workitems/edit/{wi_id}",
+                "html":       html_content,
+                "markdown":   md_content,
+                "links":      [],
+                "crawled_at": datetime.now(timezone.utc).isoformat(),
+            })
+
+    for r in records:
+        yield "record", r
+
+
+# ===========================================================================
+# Blob storage helpers
+# ===========================================================================
+
 def _save_snapshot(records: list[dict], blob_name: str) -> None:
-    """Persist the crawled records as a JSONL blob in Azure Blob Storage."""
     client           = BlobServiceClient.from_connection_string(STORAGE_CONN)
     container_client = client.get_container_client(CONTAINER)
     try:
         container_client.create_container()
     except Exception:
-        pass  # already exists
-
+        pass
     jsonl_bytes = "\n".join(json.dumps(r, ensure_ascii=False) for r in records).encode("utf-8")
     container_client.get_blob_client(blob_name).upload_blob(jsonl_bytes, overwrite=True)
 
 
-# ---------------------------------------------------------------------------
-# Hash manifest — tracks page content hashes between runs
-# ---------------------------------------------------------------------------
+def _load_snapshot(blob_name: str) -> list[dict]:
+    """Load previously crawled records from blob storage."""
+    client = BlobServiceClient.from_connection_string(STORAGE_CONN)
+    blob   = client.get_blob_client(container=CONTAINER, blob=blob_name)
+    try:
+        data = blob.download_blob().readall().decode("utf-8")
+        return [json.loads(line) for line in data.splitlines() if line.strip()]
+    except ResourceNotFoundError:
+        return []
+
+
+# ===========================================================================
+# Hash manifest — change detection between runs
+# ===========================================================================
 
 def load_hash_manifest() -> dict[str, str]:
     client = BlobServiceClient.from_connection_string(STORAGE_CONN)
     blob   = client.get_blob_client(container=CONTAINER, blob=HASH_MANIFEST_BLOB)
     try:
-        data = blob.download_blob().readall().decode("utf-8")
-        return json.loads(data)
+        return json.loads(blob.download_blob().readall().decode("utf-8"))
     except ResourceNotFoundError:
         return {}
 
@@ -190,7 +635,9 @@ def page_hash(record: dict) -> str:
     return hashlib.md5(content.encode("utf-8")).hexdigest()
 
 
-def filter_changed_records(records: list[dict], manifest: dict[str, str]) -> tuple[list[dict], dict[str, str]]:
+def filter_changed_records(
+    records: list[dict], manifest: dict[str, str]
+) -> tuple[list[dict], dict[str, str]]:
     changed      = []
     new_manifest = {}
     for record in records:
@@ -202,9 +649,9 @@ def filter_changed_records(records: list[dict], manifest: dict[str, str]) -> tup
     return changed, new_manifest
 
 
-# ---------------------------------------------------------------------------
-# Step 2: Chunk
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# STEP 2 — Chunk
+# ===========================================================================
 
 def html_to_text(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
@@ -215,6 +662,15 @@ def html_to_text(html: str) -> str:
     return " ".join(soup.get_text(separator=" ").split())
 
 
+def _path_source_type(path: str) -> tuple[str, list[str]]:
+    """Return (source_type string, source_tags list) for a given path."""
+    if path.startswith("/repos/"):
+        return "code", ["code"]
+    if path.startswith("/test-cases/"):
+        return "test", ["test"]
+    return "wiki", ["wiki"]
+
+
 def chunk_records(records: list[dict]) -> list[dict]:
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
@@ -223,10 +679,11 @@ def chunk_records(records: list[dict]) -> list[dict]:
     )
     chunks: list[dict] = []
     for record in records:
-        path       = record.get("path", "/")
-        url        = record.get("remote_url", "")
-        crawled_at = record.get("crawled_at", "")
-        text       = record.get("markdown", "").strip() or html_to_text(record.get("html", ""))
+        path        = record.get("path", "/")
+        url         = record.get("remote_url", "")
+        crawled_at  = record.get("crawled_at", "")
+        source_type, source_tags = _path_source_type(path)
+        text        = record.get("markdown", "").strip() or html_to_text(record.get("html", ""))
         if not text:
             continue
         lc_docs = splitter.create_documents(
@@ -236,60 +693,69 @@ def chunk_records(records: list[dict]) -> list[dict]:
         for idx, doc in enumerate(lc_docs):
             safe_id = re.sub(r"[^a-zA-Z0-9_\-=]", "_", path.strip("/").replace("/", "__")) or "root"
             chunks.append({
-                "id":         f"{safe_id}__{idx}",
-                "text":       doc.page_content,
-                "path":       path,
-                "url":        url,
-                "crawled_at": crawled_at,
+                "id":          f"{safe_id}__{idx}",
+                "text":        doc.page_content,
+                "path":        path,
+                "url":         url,
+                "crawled_at":  crawled_at,
+                "source_type": source_type,
+                "source_tags": source_tags,
             })
     return chunks
 
 
-# ---------------------------------------------------------------------------
-# Step 3: Embed
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# STEP 3 — Embed
+# ===========================================================================
 
-def embed_chunks(chunks: list[dict], progress_cb=None) -> list[dict]:
-    embeddings_model = AzureOpenAIEmbeddings(
+def embed_chunks(chunks: list[dict]) -> list[dict]:
+    """Embed all chunks in batches. Returns chunks with 'embedding' field populated."""
+    model = AzureOpenAIEmbeddings(
         azure_endpoint=AOAI_ENDPOINT,
         api_key=AOAI_API_KEY,
         azure_deployment=AOAI_EMBEDDING_DEPLOYMENT,
         openai_api_version=AOAI_API_VERSION,
     )
     texts       = [c["text"] for c in chunks]
-    total       = len(texts)
     all_vectors: list[list[float]] = []
-    for i in range(0, total, EMBED_BATCH_SIZE):
-        batch = texts[i: i + EMBED_BATCH_SIZE]
-        all_vectors.extend(embeddings_model.embed_documents(batch))
-        if progress_cb:
-            progress_cb(min(i + EMBED_BATCH_SIZE, total), total)
+    for i in range(0, len(texts), EMBED_BATCH_SIZE):
+        all_vectors.extend(model.embed_documents(texts[i: i + EMBED_BATCH_SIZE]))
     for chunk, vector in zip(chunks, all_vectors):
         chunk["embedding"] = vector
     return chunks
 
 
-# ---------------------------------------------------------------------------
-# Step 4: Index
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# STEP 4 — Index
+# ===========================================================================
 
 def ensure_search_index() -> bool:
-    """Returns True if the index was created, False if it already existed."""
+    """Create or update the Azure AI Search index.
+
+    Adds semantic configuration, tag-based scoring profile, and source-type fields.
+    Returns True when the index is newly created, False when an existing index was updated.
+    """
     index_client = SearchIndexClient(
         endpoint=SEARCH_ENDPOINT,
         credential=AzureKeyCredential(SEARCH_API_KEY),
     )
-    if SEARCH_INDEX_NAME in [idx.name for idx in index_client.list_indexes()]:
-        return False
+    existing = [idx.name for idx in index_client.list_indexes()]
+    is_new   = SEARCH_INDEX_NAME not in existing
 
     index = SearchIndex(
         name=SEARCH_INDEX_NAME,
         fields=[
-            SimpleField(name="id",         type=SearchFieldDataType.String, key=True, filterable=True),
-            SearchableField(name="text",   type=SearchFieldDataType.String),
-            SimpleField(name="path",       type=SearchFieldDataType.String, filterable=True, facetable=True),
-            SimpleField(name="url",        type=SearchFieldDataType.String),
-            SimpleField(name="crawled_at", type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="id",          type=SearchFieldDataType.String, key=True, filterable=True),
+            SearchableField(name="text",    type=SearchFieldDataType.String),
+            SimpleField(name="path",        type=SearchFieldDataType.String, filterable=True, facetable=True),
+            SimpleField(name="url",         type=SearchFieldDataType.String),
+            SimpleField(name="crawled_at",  type=SearchFieldDataType.String, filterable=True),
+            SimpleField(name="source_type", type=SearchFieldDataType.String, filterable=True, facetable=True),
+            SimpleField(
+                name="source_tags",
+                type=SearchFieldDataType.Collection(SearchFieldDataType.String),
+                filterable=True,
+            ),
             SearchField(
                 name="embedding",
                 type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
@@ -302,151 +768,311 @@ def ensure_search_index() -> bool:
             algorithms=[HnswAlgorithmConfiguration(name="hnsw-config")],
             profiles=[VectorSearchProfile(name="hnsw-profile", algorithm_configuration_name="hnsw-config")],
         ),
+        semantic_search=SemanticSearch(
+            configurations=[
+                SemanticConfiguration(
+                    name="tigerchat-semantic",
+                    prioritized_fields=SemanticPrioritizedFields(
+                        content_fields=[SemanticField(field_name="text")],
+                        keywords_fields=[SemanticField(field_name="path")],
+                    ),
+                )
+            ]
+        ),
+        scoring_profiles=[
+            ScoringProfile(
+                name="source-boost",
+                function_aggregation="sum",
+                functions=[
+                    TagScoringFunction(
+                        field_name="source_tags",
+                        boost=3.0,
+                        parameters=TagScoringParameters(tags_parameter="boostTags"),
+                        interpolation="linear",
+                    )
+                ],
+            )
+        ],
     )
-    index_client.create_index(index)
-    return True
+
+    if is_new:
+        index_client.create_index(index)
+        return True
+
+    # Existing index — try full update first, then fall back if the tier
+    # doesn't support semantic search or scoring profiles.
+    try:
+        index_client.create_or_update_index(index)
+    except Exception as e:
+        err = str(e)
+        if "semantic" in err.lower() or "scoringProfile" in err.lower() or "ScoringProfile" in err:
+            log.warning("Semantic/scoring profile not supported by this tier — updating index without them.")
+            index.semantic_search = None
+            index.scoring_profiles = []
+            index_client.create_or_update_index(index)
+        else:
+            raise
+    return False
 
 
-# ---------------------------------------------------------------------------
-# Step 5: Upload
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# STEP 5 — Upload
+# ===========================================================================
 
-def upload_to_search(chunks: list[dict], progress_cb=None) -> int:
-    """Returns number of failed documents."""
+def upload_to_search(chunks: list[dict]) -> int:
+    """Upload chunks to Azure AI Search in batches. Returns count of failed documents."""
     search_client = SearchClient(
         endpoint=SEARCH_ENDPOINT,
         index_name=SEARCH_INDEX_NAME,
         credential=AzureKeyCredential(SEARCH_API_KEY),
     )
-    total  = len(chunks)
     failed = 0
-    for i in range(0, total, UPLOAD_BATCH_SIZE):
-        batch   = chunks[i: i + UPLOAD_BATCH_SIZE]
-        results = search_client.upload_documents(documents=batch)
+    for i in range(0, len(chunks), UPLOAD_BATCH_SIZE):
+        results = search_client.upload_documents(documents=chunks[i: i + UPLOAD_BATCH_SIZE])
         failed += sum(1 for r in results if not r.succeeded)
-        if progress_cb:
-            progress_cb(min(i + UPLOAD_BATCH_SIZE, total), total)
     return failed
 
 
-# ---------------------------------------------------------------------------
-# Generator — used by the web server for streaming progress
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Pipeline generator — used by the web server for SSE streaming
+# ===========================================================================
 
-def run_pipeline() -> Generator[dict, None, None]:
+def run_pipeline(
+    crawl: bool = True,
+    crawl_wiki: bool | None = None,
+    crawl_code: bool | None = None,
+    crawl_tests: bool | None = None,
+    selected_repos: list[str] | None = None,
+) -> Generator[dict, None, None]:
     """
-    Runs the full pipeline, yielding progress events as dicts:
+    Runs the full pipeline, yielding SSE-ready event dicts:
       { "step": str, "status": "active"|"done"|"error", "message": str }
-    The final upload event also includes a "summary" key with run stats.
+    The final upload event includes a "summary" key with run stats.
+
+    crawl=False: skip crawling and re-process the existing snapshot from blob storage.
+    crawl_wiki/code/tests: override the CRAWL_* env vars when crawl=True.
     """
-    summary = {}
+    # Resolve per-source toggles — UI params take priority over env vars
+    do_wiki  = crawl_wiki  if crawl_wiki  is not None else CRAWL_WIKI
+    do_code  = crawl_code  if crawl_code  is not None else CRAWL_CODE
+    do_tests = crawl_tests if crawl_tests is not None else CRAWL_TESTS
+
+    blob_name = f"wiki_{ORG}_{PROJECT}.jsonl"
+    summary   = {}
+    force_reprocess = False
 
     def event(step, status, message, **extra):
         d = {"step": step, "status": status, "message": message}
         d.update(extra)
         return d
 
-    # ── Step 1: Crawl ────────────────────────────────────────────────────────
+    # ── Step 1: Crawl ─────────────────────────────────────────────────────────
+    if not crawl:
+        # Skip crawl — load the last snapshot from blob and force re-processing
+        yield event("crawl", "active", "Crawl skipped — loading existing snapshot from blob storage…")
+        try:
+            all_records = _load_snapshot(blob_name)
+        except Exception as exc:
+            yield event("crawl", "error", f"Could not load snapshot: {exc}")
+            return
+        if not all_records:
+            yield event("crawl", "error",
+                        "No snapshot found in blob storage — run with crawling enabled first.")
+            return
+        force_reprocess = True
+        summary.update({
+            "pages": len(all_records), "wiki_count": 0,
+            "code_count": 0, "test_count": 0, "blob": blob_name,
+        })
+        yield event("crawl", "done",
+                    f"Loaded {len(all_records)} records from existing snapshot (crawl skipped)")
+    else:
+        try:
+            all_records: list[dict] = []
+            wiki_count = code_count = test_count = 0
+
+            # ── Wiki ──
+            if do_wiki:
+                yield event("crawl", "active", f"[Wiki] Connecting to {ORG}/{PROJECT}…")
+                pages = _list_all_wiki_pages()
+                yield event("crawl", "active", f"[Wiki] Found {len(pages)} pages — fetching content…")
+                failed_pages: list[str] = []
+                for i, page in enumerate(pages, 1):
+                    try:
+                        all_records.append(_fetch_wiki_page(page["path"]))
+                        wiki_count += 1
+                    except Exception as exc:
+                        log.warning("Wiki page fetch failed %s: %s", page["path"], exc)
+                        failed_pages.append(page["path"])
+                    if i % 20 == 0 or i == len(pages):
+                        yield event("crawl", "active", f"[Wiki] {i}/{len(pages)} pages fetched…")
+                msg = f"[Wiki] Done — {wiki_count} page(s)"
+                if failed_pages:
+                    msg += f" ({len(failed_pages)} failed)"
+                yield event("crawl", "active", msg)
+
+            # ── Code ──
+            if do_code:
+                yield event("crawl", "active", "[Code] Starting repository crawl…")
+                try:
+                    for kind, value in _crawl_code_files(selected_repos=selected_repos):
+                        if kind == "event":
+                            yield event("crawl", "active", value)
+                        else:
+                            all_records.append(value)
+                            code_count += 1
+                except Exception as exc:
+                    log.warning("Code crawl error: %s", exc)
+                    yield event("crawl", "active", f"[Code] Warning: {exc} — continuing")
+                yield event("crawl", "active", f"[Code] Done — {code_count} file(s)")
+
+            # ── Tests ──
+            if do_tests:
+                yield event("crawl", "active", "[Tests] Starting test management crawl…")
+                try:
+                    for kind, value in _crawl_test_cases():
+                        if kind == "event":
+                            yield event("crawl", "active", value)
+                        else:
+                            all_records.append(value)
+                            test_count += 1
+                except Exception as exc:
+                    log.warning("Test crawl error: %s", exc)
+                    yield event("crawl", "active", f"[Tests] Warning: {exc} — continuing")
+                yield event("crawl", "active", f"[Tests] Done — {test_count} test case(s)")
+
+            # Save combined snapshot
+            _save_snapshot(all_records, blob_name)
+
+            summary.update({
+                "pages":      len(all_records),
+                "wiki_count": wiki_count,
+                "code_count": code_count,
+                "test_count": test_count,
+                "blob":       blob_name,
+            })
+            yield event("crawl", "done",
+                        f"Crawled {len(all_records)} total records "
+                        f"(wiki: {wiki_count}, code: {code_count}, tests: {test_count})")
+
+        except Exception as exc:
+            yield event("crawl", "error", str(exc))
+            return
+
+    records = all_records
+
+    # ── Step 2: Chunk (with optional change detection) ────────────────────────
     try:
-        yield event("crawl", "active", f"Connecting to {ORG}/{PROJECT} wiki…")
-        pages = _list_all_pages()
-        yield event("crawl", "active", f"Found {len(pages)} pages — fetching content…")
+        if force_reprocess:
+            # Crawl was skipped — re-process all records regardless of hashes
+            yield event("chunk", "active",
+                        f"Re-processing {len(records)} records from snapshot (bypassing change detection)…")
+            changed_records = records
+            new_manifest    = {r["path"]: page_hash(r) for r in records}
+            skipped = 0
+        else:
+            yield event("chunk", "active", "Loading hash manifest…")
+            manifest = load_hash_manifest()
+            changed_records, new_manifest = filter_changed_records(records, manifest)
+            skipped = len(records) - len(changed_records)
 
-        records:      list[dict] = []
-        failed_pages: list[str]  = []
-
-        for i, page in enumerate(pages, 1):
-            path = page["path"]
-            try:
-                records.append(_fetch_page_content(path))
-            except Exception as exc:
-                log.warning("Failed to fetch %s: %s", path, exc)
-                failed_pages.append(path)
-            if i % 20 == 0 or i == len(pages):
-                yield event("crawl", "active", f"Fetched {i}/{len(pages)} pages…")
-
-        # Persist snapshot to blob storage — always overwrites the same file
-        blob_name = f"wiki_{ORG}_{PROJECT}.jsonl"
-        _save_snapshot(records, blob_name)
-
-        summary["pages"] = len(records)
-        summary["blob"]  = blob_name
-        crawl_msg = f"Crawled {len(records)} pages — snapshot saved to {blob_name}"
-        if failed_pages:
-            crawl_msg += f" ({len(failed_pages)} page(s) failed)"
-        yield event("crawl", "done", crawl_msg)
-    except Exception as e:
-        yield event("crawl", "error", str(e))
-        return
-
-    # ── Step 2: Chunk (with change detection) ────────────────────────────────
-    try:
-        yield event("chunk", "active", "Loading hash manifest…")
-        manifest = load_hash_manifest()
-
-        changed_records, new_manifest = filter_changed_records(records, manifest)
-        skipped = len(records) - len(changed_records)
         summary["skipped"] = skipped
 
         if not changed_records:
-            summary["chunks"]   = 0
-            summary["uploaded"] = 0
-            summary["failed"]   = 0
-            yield event("chunk",  "done", f"All {len(records)} pages unchanged — nothing to do")
+            summary.update({"chunks": 0, "uploaded": 0, "failed": 0})
+            yield event("chunk",  "done", f"All {len(records)} records unchanged — nothing to do")
             yield event("embed",  "done", "Skipped (no changes)")
             yield event("index",  "done", "Skipped (no changes)")
             yield event("upload", "done", "Skipped (no changes)", summary=summary)
             return
 
-        yield event("chunk", "active", f"Chunking {len(changed_records)} changed pages ({skipped} unchanged, skipped)…")
-        chunks = chunk_records(changed_records)
+        yield event("chunk", "active",
+                    f"Chunking {len(changed_records)} records ({skipped} unchanged, skipped)…")
+        chunks = []
+        for c_idx, record in enumerate(changed_records, 1):
+            chunks.extend(chunk_records([record]))
+            if c_idx % 50 == 0 or c_idx == len(changed_records):
+                yield event("chunk", "active",
+                            f"Chunked {c_idx}/{len(changed_records)} records → {len(chunks)} chunks so far…")
         summary["chunks"] = len(chunks)
-        yield event("chunk", "done", f"Produced {len(chunks)} chunks from {len(changed_records)} changed pages ({skipped} skipped)")
-    except Exception as e:
-        yield event("chunk", "error", str(e))
+        yield event("chunk", "done",
+                    f"Produced {len(chunks)} chunks from {len(changed_records)} changed records ({skipped} skipped)")
+
+    except Exception as exc:
+        yield event("chunk", "error", str(exc))
         return
 
     # ── Step 3: Embed ─────────────────────────────────────────────────────────
     try:
-        total_chunks = len(chunks)
-        yield event("embed", "active", f"Embedding {total_chunks} chunks…")
-        chunks = embed_chunks(chunks)
-        yield event("embed", "done", f"Embedded {total_chunks} chunks")
-    except Exception as e:
-        yield event("embed", "error", str(e))
+        n_embed_batches = max(1, (len(chunks) + EMBED_BATCH_SIZE - 1) // EMBED_BATCH_SIZE)
+        yield event("embed", "active",
+                    f"Embedding {len(chunks)} chunks in {n_embed_batches} batch(es) of {EMBED_BATCH_SIZE}…")
+        model = AzureOpenAIEmbeddings(
+            azure_endpoint=AOAI_ENDPOINT,
+            api_key=AOAI_API_KEY,
+            azure_deployment=AOAI_EMBEDDING_DEPLOYMENT,
+            openai_api_version=AOAI_API_VERSION,
+        )
+        texts       = [c["text"] for c in chunks]
+        all_vectors: list[list[float]] = []
+        for i in range(0, len(texts), EMBED_BATCH_SIZE):
+            batch_num = i // EMBED_BATCH_SIZE + 1
+            yield event("embed", "active",
+                        f"Embedding batch {batch_num}/{n_embed_batches}…")
+            all_vectors.extend(model.embed_documents(texts[i: i + EMBED_BATCH_SIZE]))
+        for chunk, vector in zip(chunks, all_vectors):
+            chunk["embedding"] = vector
+        yield event("embed", "done", f"Embedded {len(chunks)} chunks")
+    except Exception as exc:
+        yield event("embed", "error", str(exc))
         return
 
     # ── Step 4: Index ─────────────────────────────────────────────────────────
     try:
         yield event("index", "active", "Ensuring search index exists…")
         created = ensure_search_index()
-        msg = f"Created index '{SEARCH_INDEX_NAME}'" if created else f"Index '{SEARCH_INDEX_NAME}' already exists"
-        summary["index"]         = SEARCH_INDEX_NAME
-        summary["index_created"] = created
-        yield event("index", "done", msg)
-    except Exception as e:
-        yield event("index", "error", str(e))
+        summary.update({"index": SEARCH_INDEX_NAME, "index_created": created})
+        yield event("index", "done",
+                    f"Created index '{SEARCH_INDEX_NAME}'" if created
+                    else f"Index '{SEARCH_INDEX_NAME}' already exists")
+    except Exception as exc:
+        yield event("index", "error", str(exc))
         return
 
     # ── Step 5: Upload ────────────────────────────────────────────────────────
     try:
-        yield event("upload", "active", f"Uploading {len(chunks)} documents…")
-        failed            = upload_to_search(chunks)
-        summary["uploaded"] = len(chunks) - failed
-        summary["failed"]   = failed
+        n_upload_batches = max(1, (len(chunks) + UPLOAD_BATCH_SIZE - 1) // UPLOAD_BATCH_SIZE)
+        yield event("upload", "active",
+                    f"Uploading {len(chunks)} documents in {n_upload_batches} batch(es)…")
+        search_client = SearchClient(
+            endpoint=SEARCH_ENDPOINT,
+            index_name=SEARCH_INDEX_NAME,
+            credential=AzureKeyCredential(SEARCH_API_KEY),
+        )
+        failed = 0
+        for i in range(0, len(chunks), UPLOAD_BATCH_SIZE):
+            batch_num = i // UPLOAD_BATCH_SIZE + 1
+            yield event("upload", "active",
+                        f"Uploading batch {batch_num}/{n_upload_batches}…")
+            results = search_client.upload_documents(documents=chunks[i: i + UPLOAD_BATCH_SIZE])
+            failed += sum(1 for r in results if not r.succeeded)
+
+        summary.update({"uploaded": len(chunks) - failed, "failed": failed})
 
         if failed == 0:
             save_hash_manifest(new_manifest)
 
-        yield event("upload", "done", f"Uploaded {len(chunks) - failed} documents ({failed} failed)", summary=summary)
-    except Exception as e:
-        yield event("upload", "error", str(e))
+        yield event("upload", "done",
+                    f"Uploaded {len(chunks) - failed} documents ({failed} failed)",
+                    summary=summary)
+    except Exception as exc:
+        yield event("upload", "error", str(exc))
         return
 
 
-# ---------------------------------------------------------------------------
+# ===========================================================================
 # CLI
-# ---------------------------------------------------------------------------
+# ===========================================================================
 
 if __name__ == "__main__":
     for evt in run_pipeline():
