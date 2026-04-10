@@ -1,0 +1,97 @@
+[
+  {
+    "name": "AZURE_DEVOPS_PAT",
+    "value": "your-pat-here",
+    "slotSetting": false
+  },
+  {
+    "name": "DEVOPS_ORG",
+    "value": "your-org",
+    "slotSetting": false
+  },
+  {
+    "name": "DEVOPS_PROJECT",
+    "value": "your-project",
+    "slotSetting": false
+  },
+  {
+    "name": "DEVOPS_WIKI",
+    "value": "your-project.wiki",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_STORAGE_CONNECTION_STRING",
+    "value": "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_STORAGE_CONTAINER",
+    "value": "your-container-name",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_OPENAI_ENDPOINT",
+    "value": "https://your-resource.openai.azure.com/",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_OPENAI_API_KEY",
+    "value": "your-key-here",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_OPENAI_EMBEDDING_DEPLOYMENT",
+    "value": "text-embedding-3-large",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_OPENAI_API_VERSION",
+    "value": "2024-02-01",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_OPENAI_CHAT_DEPLOYMENT",
+    "value": "gpt-4o",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_SEARCH_ENDPOINT",
+    "value": "https://your-resource.search.windows.net",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_SEARCH_API_KEY",
+    "value": "your-key-here",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_SEARCH_INDEX_NAME",
+    "value": "wiki-index",
+    "slotSetting": false
+  },
+  {
+    "name": "CRAWL_WIKI",
+    "value": "true",
+    "slotSetting": false
+  },
+  {
+    "name": "CRAWL_CODE",
+    "value": "true",
+    "slotSetting": false
+  },
+  {
+    "name": "CRAWL_TESTS",
+    "value": "true",
+    "slotSetting": false
+  },
+  {
+    "name": "AZURE_SEARCH_SEMANTIC_ENABLED",
+    "value": "true",
+    "slotSetting": false
+  },
+  {
+    "name": "BOOST_SOURCE_TYPE",
+    "value": "",
+    "slotSetting": false
+  }
+]

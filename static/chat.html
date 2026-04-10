@@ -55,7 +55,10 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      text-decoration: none;
+      transition: opacity 0.2s;
     }
+    .nav-logo:hover { opacity: 0.8; }
     .nav-badge {
       font-size: 0.7rem;
       padding: 0.2rem 0.6rem;
@@ -479,7 +482,7 @@
   <!-- Nav -->
   <nav class="nav">
     <div class="nav-left">
-      <span class="nav-logo">TigerChat</span>
+      <a class="nav-logo" href="/">TigerChat</a>
       <span class="nav-badge">Wiki · Code · Test Plans</span>
     </div>
     <div class="nav-links">
