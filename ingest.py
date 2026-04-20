@@ -24,6 +24,8 @@ import json
 import logging
 import os
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from typing import Generator
@@ -157,7 +159,8 @@ SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "wiki-index")
 CHUNK_SIZE        = 1000
 CHUNK_OVERLAP     = 150
 EMBED_BATCH_SIZE  = 100
-UPLOAD_BATCH_SIZE = 100
+EMBED_CONCURRENCY = 4    # parallel embedding requests to Azure OpenAI
+UPLOAD_BATCH_SIZE = 200  # Azure AI Search supports up to 1000; 200 halves round-trips
 VECTOR_DIM        = 3072
 
 
@@ -484,14 +487,21 @@ def _crawl_test_cases():
     Crawls all test plans → suites → test cases and batch-fetches work items.
     Test cases appearing in multiple suites are deduplicated by work item ID.
     """
-    # List all test plans
-    plans_resp = requests.get(
-        f"{_API_BASE}/testplan/plans",
-        headers=_HEADERS,
-        params={"api-version": _API_VERSION, "$top": 500},
-    )
-    plans_resp.raise_for_status()
-    plans = plans_resp.json().get("value", [])
+    # List all test plans (paginated)
+    plans = []
+    plan_params = {"api-version": _API_VERSION, "$top": 500}
+    while True:
+        plans_resp = requests.get(
+            f"{_API_BASE}/testplan/plans",
+            headers=_HEADERS,
+            params=plan_params,
+        )
+        plans_resp.raise_for_status()
+        plans.extend(plans_resp.json().get("value", []))
+        token = plans_resp.headers.get("x-ms-continuationtoken")
+        if not token:
+            break
+        plan_params = {"api-version": _API_VERSION, "$top": 500, "continuationToken": token}
 
     yield "event", f"[Tests] Found {len(plans)} test plan(s)"
 
@@ -504,14 +514,22 @@ def _crawl_test_cases():
 
         yield "event", f"[Tests] Scanning plan {p_idx}/{len(plans)}: {plan_name}…"
 
+        # Paginate suites — Azure returns x-ms-continuationtoken when more pages exist
         try:
-            sr = requests.get(
-                f"{_API_BASE}/testplan/plans/{plan_id}/suites",
-                headers=_HEADERS,
-                params={"api-version": _API_VERSION, "$top": 500},
-            )
-            sr.raise_for_status()
-            suites = sr.json().get("value", [])
+            suites = []
+            params = {"api-version": _API_VERSION, "$top": 500}
+            while True:
+                sr = requests.get(
+                    f"{_API_BASE}/testplan/plans/{plan_id}/suites",
+                    headers=_HEADERS,
+                    params=params,
+                )
+                sr.raise_for_status()
+                suites.extend(sr.json().get("value", []))
+                token = sr.headers.get("x-ms-continuationtoken")
+                if not token:
+                    break
+                params = {"api-version": _API_VERSION, "$top": 500, "continuationToken": token}
         except Exception as exc:
             log.warning("Failed to list suites for plan %s: %s", plan_name, exc)
             yield "event", f"[Tests] Could not list suites for {plan_name} — skipping"
@@ -525,14 +543,22 @@ def _crawl_test_cases():
             if suite_name == plan_name:
                 continue
 
+            # Paginate test cases within each suite
             try:
-                tcr = requests.get(
-                    f"{_API_BASE}/testplan/plans/{plan_id}/suites/{suite_id}/testcase",
-                    headers=_HEADERS,
-                    params={"api-version": _API_VERSION, "$top": 500},
-                )
-                tcr.raise_for_status()
-                test_cases = tcr.json().get("value", [])
+                test_cases = []
+                tc_params = {"api-version": _API_VERSION, "$top": 500}
+                while True:
+                    tcr = requests.get(
+                        f"{_API_BASE}/testplan/plans/{plan_id}/suites/{suite_id}/testcase",
+                        headers=_HEADERS,
+                        params=tc_params,
+                    )
+                    tcr.raise_for_status()
+                    test_cases.extend(tcr.json().get("value", []))
+                    token = tcr.headers.get("x-ms-continuationtoken")
+                    if not token:
+                        break
+                    tc_params = {"api-version": _API_VERSION, "$top": 500, "continuationToken": token}
             except Exception as exc:
                 log.warning("Failed to list test cases for %s/%s: %s", plan_name, suite_name, exc)
                 continue
@@ -563,9 +589,26 @@ def _crawl_test_cases():
             wr.raise_for_status()
             work_items = wr.json().get("value", [])
         except Exception as exc:
-            log.warning("Batch work item fetch failed (batch %d): %s", i // 200, exc)
-            yield "event", f"[Tests] Warning: batch {batch_num} failed — {exc}"
-            continue
+            # Batch failed because one or more IDs are deleted/inaccessible.
+            # Fall back to fetching each ID individually so valid items are kept.
+            log.warning("Batch %d failed (%s) — retrying individually…", batch_num, exc)
+            yield "event", f"[Tests] Batch {batch_num} failed — retrying {len(batch)} items individually…"
+            work_items = []
+            skipped = 0
+            for wi_id_single in batch:
+                try:
+                    sr = requests.get(
+                        f"{_API_BASE}/wit/workitems/{wi_id_single}",
+                        headers=_HEADERS,
+                        params={"$expand": "all", "api-version": _API_VERSION},
+                    )
+                    sr.raise_for_status()
+                    work_items.append(sr.json())
+                except Exception:
+                    log.warning("Skipping inaccessible work item %s", wi_id_single)
+                    skipped += 1
+            if skipped:
+                yield "event", f"[Tests] Skipped {skipped} inaccessible work item(s) in batch {batch_num}"
 
         for wi in work_items:
             wi_id               = wi.get("id")
@@ -988,12 +1031,23 @@ def run_pipeline(
 
         yield event("chunk", "active",
                     f"Chunking {len(changed_records)} records ({skipped} unchanged, skipped)…")
+        # Chunk records in parallel — each record is independent CPU work
         chunks = []
-        for c_idx, record in enumerate(changed_records, 1):
-            chunks.extend(chunk_records([record]))
-            if c_idx % 50 == 0 or c_idx == len(changed_records):
-                yield event("chunk", "active",
-                            f"Chunked {c_idx}/{len(changed_records)} records → {len(chunks)} chunks so far…")
+        CHUNK_BATCH = 200  # records per progress report
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            futs = {pool.submit(chunk_records, [r]): idx for idx, r in enumerate(changed_records)}
+            results_map: dict[int, list] = {}
+            for fut in as_completed(futs):
+                idx = futs[fut]
+                results_map[idx] = fut.result()
+                done_count = len(results_map)
+                if done_count % CHUNK_BATCH == 0 or done_count == len(changed_records):
+                    partial = sum(len(v) for v in results_map.values())
+                    yield event("chunk", "active",
+                                f"Chunked {done_count}/{len(changed_records)} records → {partial} chunks so far…")
+        # Reassemble in original order
+        for idx in range(len(changed_records)):
+            chunks.extend(results_map[idx])
         summary["chunks"] = len(chunks)
         yield event("chunk", "done",
                     f"Produced {len(chunks)} chunks from {len(changed_records)} changed records ({skipped} skipped)")
@@ -1004,22 +1058,62 @@ def run_pipeline(
 
     # ── Step 3: Embed ─────────────────────────────────────────────────────────
     try:
-        n_embed_batches = max(1, (len(chunks) + EMBED_BATCH_SIZE - 1) // EMBED_BATCH_SIZE)
+        texts = [c["text"] for c in chunks]
+        batches = [texts[i: i + EMBED_BATCH_SIZE] for i in range(0, len(texts), EMBED_BATCH_SIZE)]
+        n_embed_batches = len(batches)
         yield event("embed", "active",
-                    f"Embedding {len(chunks)} chunks in {n_embed_batches} batch(es) of {EMBED_BATCH_SIZE}…")
+                    f"Embedding {len(chunks)} chunks in {n_embed_batches} batch(es) — {EMBED_CONCURRENCY} parallel…")
+
         model = AzureOpenAIEmbeddings(
             azure_endpoint=AOAI_ENDPOINT,
             api_key=AOAI_API_KEY,
             azure_deployment=AOAI_EMBEDDING_DEPLOYMENT,
             openai_api_version=AOAI_API_VERSION,
         )
-        texts       = [c["text"] for c in chunks]
-        all_vectors: list[list[float]] = []
-        for i in range(0, len(texts), EMBED_BATCH_SIZE):
-            batch_num = i // EMBED_BATCH_SIZE + 1
-            yield event("embed", "active",
-                        f"Embedding batch {batch_num}/{n_embed_batches}…")
-            all_vectors.extend(model.embed_documents(texts[i: i + EMBED_BATCH_SIZE]))
+
+        def _embed_batch(batch_idx: int, batch_texts: list[str]) -> tuple[int, list]:
+            max_retries = 5
+            for attempt in range(max_retries):
+                try:
+                    return batch_idx, model.embed_documents(batch_texts)
+                except Exception as exc:
+                    if attempt < max_retries - 1 and (
+                        "429" in str(exc) or "rate" in str(exc).lower()
+                    ):
+                        wait = 2 ** attempt * 5  # 5, 10, 20, 40, 80 s
+                        log.warning("Rate limited on embed batch %d — retrying in %ds", batch_idx + 1, wait)
+                        time.sleep(wait)
+                    else:
+                        raise
+
+        # Submit all batches to a thread pool; yield keepalives while waiting
+        all_vectors: list[list[float]] = [None] * len(texts)  # type: ignore[list-item]
+        completed = 0
+        with ThreadPoolExecutor(max_workers=EMBED_CONCURRENCY) as pool:
+            futures = {
+                pool.submit(_embed_batch, idx, batch): idx
+                for idx, batch in enumerate(batches)
+            }
+            while futures:
+                done = set()
+                for fut in list(futures):
+                    if fut.done():
+                        batch_idx = futures[fut]
+                        batch_vectors = fut.result()[1]  # raises if _embed_batch raised
+                        start = batch_idx * EMBED_BATCH_SIZE
+                        for j, vec in enumerate(batch_vectors):
+                            all_vectors[start + j] = vec
+                        completed += 1
+                        done.add(fut)
+                        yield event("embed", "active",
+                                    f"Embedded batch {completed}/{n_embed_batches}…")
+                for fut in done:
+                    del futures[fut]
+                if futures:
+                    # Brief sleep + keepalive to avoid busy-spin and keep SSE alive
+                    time.sleep(1)
+                    yield ": keepalive\n"
+
         for chunk, vector in zip(chunks, all_vectors):
             chunk["embedding"] = vector
         yield event("embed", "done", f"Embedded {len(chunks)} chunks")
@@ -1050,12 +1144,20 @@ def run_pipeline(
             credential=AzureKeyCredential(SEARCH_API_KEY),
         )
         failed = 0
-        for i in range(0, len(chunks), UPLOAD_BATCH_SIZE):
-            batch_num = i // UPLOAD_BATCH_SIZE + 1
-            yield event("upload", "active",
-                        f"Uploading batch {batch_num}/{n_upload_batches}…")
-            results = search_client.upload_documents(documents=chunks[i: i + UPLOAD_BATCH_SIZE])
-            failed += sum(1 for r in results if not r.succeeded)
+        completed_uploads = 0
+
+        def _upload_batch(batch_docs):
+            res = search_client.upload_documents(documents=batch_docs)
+            return sum(1 for r in res if not r.succeeded)
+
+        upload_batches = [chunks[i: i + UPLOAD_BATCH_SIZE] for i in range(0, len(chunks), UPLOAD_BATCH_SIZE)]
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futs = {pool.submit(_upload_batch, b): b_idx for b_idx, b in enumerate(upload_batches)}
+            for fut in as_completed(futs):
+                failed += fut.result()
+                completed_uploads += 1
+                yield event("upload", "active",
+                            f"Uploading batch {completed_uploads}/{n_upload_batches}…")
 
         summary.update({"uploaded": len(chunks) - failed, "failed": failed})
 

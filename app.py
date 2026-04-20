@@ -83,7 +83,11 @@ async def ingest_stream(
             crawl_tests=tests,
             selected_repos=selected_repos,
         ):
-            yield f"data: {json.dumps(event)}\n\n"
+            # Keepalive comments are passed through raw (SSE comment, no "data:" prefix)
+            if isinstance(event, str) and event.startswith(":"):
+                yield event + "\n"
+            else:
+                yield f"data: {json.dumps(event)}\n\n"
         yield "data: {\"step\": \"__done__\"}\n\n"
 
     return StreamingResponse(
