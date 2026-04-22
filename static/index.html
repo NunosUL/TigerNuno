@@ -289,15 +289,15 @@
       margin-top: 0.15rem;
     }
 
-    /* ── Repo picker ── */
-    .repo-picker {
+    /* ── Generic picker (repos + test plans/suites/cases) ── */
+    .picker-panel {
       margin-top: 0.9rem;
       padding-top: 0.9rem;
       border-top: 1px solid var(--border);
     }
-    .repo-picker.hidden { display: none; }
+    .picker-panel.hidden { display: none; }
 
-    .repo-picker-header {
+    .picker-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -305,18 +305,18 @@
       user-select: none;
       padding: 0.1rem 0;
     }
-    .repo-picker-header-left {
+    .picker-header-left {
       display: flex;
       align-items: center;
       gap: 0.5rem;
     }
-    .repo-picker-title {
+    .picker-title {
       font-size: 0.68rem;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: var(--muted);
     }
-    .repo-count-badge {
+    .picker-badge {
       font-size: 0.65rem;
       padding: 0.1rem 0.5rem;
       border-radius: 999px;
@@ -325,26 +325,24 @@
       color: var(--accent);
       display: none;
     }
-    .repo-count-badge.visible { display: inline-block; }
-    .repo-picker-chevron {
+    .picker-badge.visible { display: inline-block; }
+    .picker-chevron {
       font-size: 0.7rem;
       color: var(--muted);
       transition: transform 0.2s;
     }
-    .repo-picker-chevron.open { transform: rotate(180deg); }
+    .picker-chevron.open { transform: rotate(180deg); }
 
-    .repo-picker-body {
+    .picker-body {
       display: none;
       margin-top: 0.75rem;
       flex-direction: column;
       gap: 0.5rem;
     }
-    .repo-picker-body.open { display: flex; }
+    .picker-body.open { display: flex; }
 
-    .repo-search-wrap {
-      position: relative;
-    }
-    .repo-search {
+    .picker-search-wrap { position: relative; }
+    .picker-search {
       width: 100%;
       background: var(--bg);
       border: 1px solid var(--border);
@@ -355,24 +353,23 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    .repo-search:focus { border-color: var(--accent); }
-    .repo-search::placeholder { color: var(--muted); }
-    .repo-search-icon {
+    .picker-search:focus { border-color: var(--accent); }
+    .picker-search::placeholder { color: var(--muted); }
+    .picker-search-icon {
       position: absolute;
-      left: 0.6rem;
-      top: 50%;
+      left: 0.6rem; top: 50%;
       transform: translateY(-50%);
       font-size: 0.75rem;
       color: var(--muted);
       pointer-events: none;
     }
 
-    .repo-actions {
+    .picker-actions {
       display: flex;
       gap: 0.5rem;
       justify-content: flex-end;
     }
-    .repo-action-btn {
+    .picker-action-btn {
       font-size: 0.72rem;
       color: var(--muted);
       background: none;
@@ -382,10 +379,10 @@
       border-radius: 4px;
       transition: color 0.15s, background 0.15s;
     }
-    .repo-action-btn:hover { color: var(--accent); background: var(--accent-glow); }
+    .picker-action-btn:hover { color: var(--accent); background: var(--accent-glow); }
 
-    .repo-list {
-      max-height: 200px;
+    .picker-list {
+      max-height: 180px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -393,7 +390,7 @@
       scrollbar-width: thin;
       scrollbar-color: var(--border) transparent;
     }
-    .repo-item {
+    .picker-item {
       display: flex;
       align-items: center;
       gap: 0.6rem;
@@ -403,9 +400,9 @@
       transition: background 0.15s;
       user-select: none;
     }
-    .repo-item:hover { background: var(--surface2); }
-    .repo-item input[type="checkbox"] { display: none; }
-    .repo-checkbox {
+    .picker-item:hover { background: var(--surface2); }
+    .picker-item input[type="checkbox"] { display: none; }
+    .picker-checkbox {
       width: 15px; height: 15px;
       border-radius: 4px;
       border: 1.5px solid var(--border);
@@ -418,36 +415,92 @@
       font-size: 9px;
       color: transparent;
     }
-    .repo-item.checked .repo-checkbox {
+    .picker-item.checked .picker-checkbox {
       border-color: var(--accent);
       background: var(--accent);
       color: #fff;
     }
-    .repo-name {
+    .picker-item-name {
       font-size: 0.8rem;
       color: var(--muted);
       transition: color 0.15s;
-      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
     }
-    .repo-item.checked .repo-name { color: var(--text); }
-    .repo-item.hidden-filter { display: none; }
+    .picker-item.checked .picker-item-name { color: var(--text); }
+    .picker-item.hidden-filter { display: none; }
 
-    .repo-validation {
+    .picker-validation {
       font-size: 0.72rem;
       color: var(--error);
       display: none;
       padding: 0.2rem 0;
     }
-    .repo-validation.visible { display: block; }
-
-    .repo-loading {
+    .picker-validation.visible { display: block; }
+    .picker-loading {
       font-size: 0.8rem;
       color: var(--muted);
       padding: 0.5rem 0;
       text-align: center;
     }
+
+    /* Test plan cascade — suites + cases panels are nested/indented */
+    .tc-cascade { display: flex; flex-direction: column; gap: 0; }
+    .tc-level {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px dashed var(--border);
+    }
+    .tc-level.hidden { display: none; }
+    .tc-level-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    /* ── Clear manifest button ── */
+    .manifest-row {
+      margin-top: 0.9rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .manifest-row.hidden { display: none; }
+    .manifest-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.4rem 0.9rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.18s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .manifest-btn:hover:not(:disabled) {
+      border-color: var(--error);
+      color: var(--error);
+      background: var(--error-glow);
+    }
+    .manifest-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .manifest-status {
+      font-size: 0.72rem;
+      margin-top: 0.3rem;
+      min-height: 1rem;
+    }
+    .manifest-status.ok  { color: var(--success); }
+    .manifest-status.err { color: var(--error); }
 
     /* Toggle switch */
     .toggle {
@@ -569,29 +622,95 @@
         </div>
 
         <!-- Repo picker — shown only when Source Code is checked -->
-        <div class="repo-picker hidden" id="repoPicker">
-          <div class="repo-picker-header" id="repoPickerHeader">
-            <div class="repo-picker-header-left">
-              <span class="repo-picker-title">Repositories</span>
-              <span class="repo-count-badge" id="repoCountBadge">0 selected</span>
+        <div class="picker-panel hidden" id="repoPicker">
+          <div class="picker-header" id="repoPickerHeader">
+            <div class="picker-header-left">
+              <span class="picker-title">Repositories</span>
+              <span class="picker-badge" id="repoCountBadge"></span>
             </div>
-            <span class="repo-picker-chevron" id="repoChevron">▼</span>
+            <span class="picker-chevron" id="repoChevron">▼</span>
           </div>
+          <div class="picker-body" id="repoPickerBody">
+            <div class="picker-search-wrap">
+              <span class="picker-search-icon">🔍</span>
+              <input class="picker-search" id="repoSearch" placeholder="Filter repositories…" autocomplete="off">
+            </div>
+            <div class="picker-actions">
+              <button class="picker-action-btn" id="repoSelectAll">Select all</button>
+              <button class="picker-action-btn" id="repoDeselectAll">Deselect all</button>
+            </div>
+            <div class="picker-list" id="repoList">
+              <div class="picker-loading" id="repoLoading">Loading repositories…</div>
+            </div>
+            <div class="picker-validation" id="repoValidation">Select at least one repository to crawl source code.</div>
+          </div>
+        </div>
 
-          <div class="repo-picker-body" id="repoPickerBody">
-            <div class="repo-search-wrap">
-              <span class="repo-search-icon">🔍</span>
-              <input class="repo-search" id="repoSearch" placeholder="Filter repositories…" autocomplete="off">
+        <!-- Test plan cascade picker — shown only when Test Plans is checked -->
+        <div class="picker-panel hidden" id="testPicker">
+          <div class="picker-header" id="testPickerHeader">
+            <div class="picker-header-left">
+              <span class="picker-title">Test Plans</span>
+              <span class="picker-badge" id="planCountBadge"></span>
             </div>
-            <div class="repo-actions">
-              <button class="repo-action-btn" id="repoSelectAll">Select all</button>
-              <button class="repo-action-btn" id="repoDeselectAll">Deselect all</button>
-            </div>
-            <div class="repo-list" id="repoList">
-              <div class="repo-loading" id="repoLoading">Loading repositories…</div>
-            </div>
-            <div class="repo-validation" id="repoValidation">Select at least one repository to crawl source code.</div>
+            <span class="picker-chevron" id="testChevron">▼</span>
           </div>
+          <div class="picker-body" id="testPickerBody">
+
+            <!-- Level 1: Plans -->
+            <div class="picker-search-wrap">
+              <span class="picker-search-icon">🔍</span>
+              <input class="picker-search" id="planSearch" placeholder="Filter test plans…" autocomplete="off">
+            </div>
+            <div class="picker-actions">
+              <button class="picker-action-btn" id="planSelectAll">Select all</button>
+              <button class="picker-action-btn" id="planDeselectAll">Deselect all</button>
+            </div>
+            <div class="picker-list" id="planList">
+              <div class="picker-loading" id="planLoading">Loading test plans…</div>
+            </div>
+
+            <!-- Level 2: Suites — loads in parallel with plans, always visible once loaded -->
+            <div class="tc-level hidden" id="suiteLevel">
+              <div class="tc-level-label">Test Suites — select at least one suite</div>
+              <div class="picker-search-wrap">
+                <span class="picker-search-icon">🔍</span>
+                <input class="picker-search" id="suiteSearch" placeholder="Filter suites…" autocomplete="off">
+              </div>
+              <div class="picker-actions">
+                <button class="picker-action-btn" id="suiteSelectAll">Select all</button>
+                <button class="picker-action-btn" id="suiteDeselectAll">Deselect all</button>
+              </div>
+              <div class="picker-list" id="suiteList">
+                <div class="picker-loading" id="suiteLoading">Loading suites…</div>
+              </div>
+            </div>
+
+            <!-- Level 3: Test cases — loads on demand when suites are selected -->
+            <div class="tc-level hidden" id="tcLevel">
+              <div class="tc-level-label">Test Cases — select at least one test case</div>
+              <div class="picker-search-wrap">
+                <span class="picker-search-icon">🔍</span>
+                <input class="picker-search" id="tcSearch" placeholder="Filter test cases…" autocomplete="off">
+              </div>
+              <div class="picker-actions">
+                <button class="picker-action-btn" id="tcSelectAll">Select all</button>
+                <button class="picker-action-btn" id="tcDeselectAll">Deselect all</button>
+              </div>
+              <div class="picker-list" id="tcList"></div>
+            </div>
+
+            <div class="picker-validation" id="testValidation"></div>
+          </div>
+        </div>
+        <!-- Clear manifest — forces full re-index on next run -->
+        <div class="manifest-row" id="manifestRow">
+          <div class="setting-info">
+            <div class="setting-label">Force full re-index</div>
+            <div class="setting-desc">Deletes the change-detection manifest so every record is re-chunked, re-embedded and re-uploaded on the next run — regardless of whether content changed.</div>
+            <div class="manifest-status" id="manifestStatus"></div>
+          </div>
+          <button class="manifest-btn" id="clearManifestBtn" title="Clear hash manifest">🗑 Clear manifest</button>
         </div>
       </div>
     </div>
@@ -678,144 +797,357 @@
   </div>
 
   <script>
-    const btn = document.getElementById('startBtn');
-    const logEl = document.getElementById('log');
+    const btn       = document.getElementById('startBtn');
+    const logEl     = document.getElementById('log');
     const summaryEl = document.getElementById('summary');
-    const STEPS = ['crawl', 'chunk', 'embed', 'index', 'upload'];
+    const STEPS     = ['crawl', 'chunk', 'embed', 'index', 'upload'];
 
     // ── Settings toggles ──────────────────────────────────────────────────────
     const crawlToggle = document.getElementById('crawlToggle');
     const sourcesRow  = document.getElementById('sourcesRow');
 
     crawlToggle.addEventListener('change', () => {
-      sourcesRow.classList.toggle('hidden', !crawlToggle.checked);
-      if (!crawlToggle.checked) setRepoPicker(false);
+      const on = crawlToggle.checked;
+      sourcesRow.classList.toggle('hidden', !on);
+      document.getElementById('manifestRow').classList.toggle('hidden', !on);
+      if (!on) {
+        setPanel('repoPicker', false);
+        setPanel('testPicker', false);
+      }
     });
 
-    // Source chip toggle (checked ↔ active style)
-    [
-      ['srcWiki',  'lbl-wiki'],
-      ['srcCode',  'lbl-code'],
-      ['srcTests', 'lbl-tests'],
-    ].forEach(([cbId, lblId]) => {
+    // ── Clear manifest ────────────────────────────────────────────────────────
+    document.getElementById('clearManifestBtn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('manifestStatus');
+      const btn      = document.getElementById('clearManifestBtn');
+      if (!confirm('Delete the hash manifest?\n\nThe next ingestion run will re-chunk, re-embed and re-upload every record, even if its content has not changed. This may take significantly longer than a normal run.')) return;
+      btn.disabled = true;
+      statusEl.className = 'manifest-status';
+      statusEl.textContent = 'Clearing…';
+      try {
+        const res = await fetch('/api/manifest', { method: 'DELETE' });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        statusEl.className = 'manifest-status ok';
+        statusEl.textContent = '✓ Manifest cleared — next run will do a full re-index.';
+      } catch (err) {
+        statusEl.className = 'manifest-status err';
+        statusEl.textContent = `✕ ${err.message}`;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    [['srcWiki','lbl-wiki'],['srcCode','lbl-code'],['srcTests','lbl-tests']].forEach(([cbId, lblId]) => {
       const cb  = document.getElementById(cbId);
       const lbl = document.getElementById(lblId);
       cb.addEventListener('change', () => {
         lbl.classList.toggle('active', cb.checked);
-        if (cbId === 'srcCode') setRepoPicker(cb.checked);
+        if (cbId === 'srcCode')  setPanel('repoPicker', cb.checked);
+        if (cbId === 'srcTests') setPanel('testPicker',  cb.checked);
       });
     });
 
-    // ── Repo picker ───────────────────────────────────────────────────────────
-    const repoPicker     = document.getElementById('repoPicker');
-    const repoPickerHeader = document.getElementById('repoPickerHeader');
-    const repoPickerBody = document.getElementById('repoPickerBody');
-    const repoChevron    = document.getElementById('repoChevron');
-    const repoList       = document.getElementById('repoList');
-    const repoSearch     = document.getElementById('repoSearch');
-    const repoCountBadge = document.getElementById('repoCountBadge');
-    const repoValidation = document.getElementById('repoValidation');
-    const repoLoading    = document.getElementById('repoLoading');
-
-    let allRepos = [];       // [{id, name}]
-    let reposLoaded = false;
-
-    function setRepoPicker(visible) {
-      repoPicker.classList.toggle('hidden', !visible);
-      if (visible && !reposLoaded) loadRepos();
+    // ── Generic panel helpers ─────────────────────────────────────────────────
+    function setPanel(panelId, visible) {
+      document.getElementById(panelId).classList.toggle('hidden', !visible);
     }
 
+    /** Build a collapsible picker panel with search + select/deselect all.
+     *  listId, headerId, bodyId, chevronId, searchId, badgeId must exist in HTML.
+     *  onToggleItem(id, checked) called when item is clicked.
+     */
+    function makePicker({ headerId, bodyId, chevronId, searchId, listId,
+                          selectAllId, deselectAllId, badgeId, dataKey }) {
+      const header   = document.getElementById(headerId);
+      const body     = document.getElementById(bodyId);
+      const chevron  = document.getElementById(chevronId);
+      const search   = document.getElementById(searchId);
+      const list     = document.getElementById(listId);
+      const badge    = document.getElementById(badgeId);
+
+      // Collapse/expand
+      header.addEventListener('click', () => {
+        const open = body.classList.toggle('open');
+        chevron.classList.toggle('open', open);
+      });
+
+      // Filter
+      search.addEventListener('input', () => {
+        const q = search.value.toLowerCase();
+        list.querySelectorAll('.picker-item').forEach(item => {
+          item.classList.toggle('hidden-filter', !item.dataset[dataKey].toLowerCase().includes(q));
+        });
+      });
+
+      function getChecked() {
+        return Array.from(list.querySelectorAll('input:checked')).map(cb => cb.value);
+      }
+
+      function updateBadge() {
+        const n = getChecked().length;
+        badge.textContent = n ? `${n} selected` : '';
+        badge.classList.toggle('visible', n > 0);
+      }
+
+      function setAll(checked) {
+        list.querySelectorAll('.picker-item:not(.hidden-filter)').forEach(item => {
+          const cb = item.querySelector('input');
+          cb.checked = checked;
+          item.classList.toggle('checked', checked);
+          item.querySelector('.picker-checkbox').textContent = checked ? '✓' : '';
+        });
+        updateBadge();
+      }
+
+      document.getElementById(selectAllId).addEventListener('click',   () => setAll(true));
+      document.getElementById(deselectAllId).addEventListener('click', () => setAll(false));
+
+      function renderItems(items, onToggle) {
+        // Remove existing items (keep loading div if present)
+        list.querySelectorAll('.picker-item').forEach(el => el.remove());
+        items.forEach(item => {
+          const el = document.createElement('label');
+          el.className = 'picker-item';
+          el.dataset[dataKey] = item.name;
+          el.innerHTML = `
+            <input type="checkbox" value="${item.id}">
+            <div class="picker-checkbox"></div>
+            <span class="picker-item-name" title="${item.name}">${item.name}</span>`;
+          el.addEventListener('click', e => {
+            e.preventDefault();
+            const cb = el.querySelector('input');
+            cb.checked = !cb.checked;
+            el.classList.toggle('checked', cb.checked);
+            el.querySelector('.picker-checkbox').textContent = cb.checked ? '✓' : '';
+            updateBadge();
+            if (onToggle) onToggle(item.id, cb.checked, getChecked());
+          });
+          list.appendChild(el);
+        });
+        updateBadge();
+      }
+
+      return { renderItems, getChecked, updateBadge, openBody: () => { body.classList.add('open'); chevron.classList.add('open'); } };
+    }
+
+    // ── Repo picker ───────────────────────────────────────────────────────────
+    const repoPicker = makePicker({
+      headerId: 'repoPickerHeader', bodyId: 'repoPickerBody', chevronId: 'repoChevron',
+      searchId: 'repoSearch', listId: 'repoList', badgeId: 'repoCountBadge',
+      selectAllId: 'repoSelectAll', deselectAllId: 'repoDeselectAll', dataKey: 'name',
+    });
+
+    let reposLoaded = false;
+    document.getElementById('repoPicker').addEventListener('transitionend', () => {});
+
     async function loadRepos() {
-      repoLoading.style.display = 'block';
+      if (reposLoaded) return;
+      document.getElementById('repoLoading').style.display = 'block';
       try {
-        const res = await fetch('/api/repos');
-        const data = await res.json();
-        allRepos = data.repos || [];
+        const data = await fetch('/api/repos').then(r => r.json());
+        document.getElementById('repoLoading').style.display = 'none';
+        repoPicker.renderItems(data.repos || [], null);
         reposLoaded = true;
-        renderRepoList(allRepos);
-      } catch (e) {
-        repoLoading.textContent = 'Failed to load repositories.';
-        repoLoading.style.color = 'var(--error)';
+        repoPicker.openBody();
+      } catch {
+        document.getElementById('repoLoading').textContent = 'Failed to load repositories.';
       }
     }
 
-    function renderRepoList(repos) {
-      repoLoading.style.display = 'none';
-      // Preserve existing checked state
-      const checked = new Set(getSelectedRepos());
-      // Clear all but loading indicator
-      Array.from(repoList.children).forEach(el => {
-        if (el !== repoLoading) el.remove();
+    document.getElementById('srcCode').addEventListener('change', e => {
+      if (e.target.checked) loadRepos();
+    });
+
+    // ── Test Plan / Suite / Test Case pickers ────────────────────────────────
+    // Plans and Suites load eagerly so the user can browse all items immediately.
+    // Test Cases load on demand when suites are selected (9 000+ items upfront would be too slow).
+    //
+    // Suite and TC panels are flat lists — no collapsible header of their own.
+    // Only the top-level "Test Plans" panel uses makePicker (collapse/expand + search).
+
+    let plansLoaded  = false;
+    let suitesLoaded = false;
+    let tcCache      = {};   // sorted "pid:sid,pid:sid" → [{id, name}]
+    let allSuiteData = [];   // [{id, name, plan_id, plan_name}]
+
+    const planPicker = makePicker({
+      headerId: 'testPickerHeader', bodyId: 'testPickerBody', chevronId: 'testChevron',
+      searchId: 'planSearch', listId: 'planList', badgeId: 'planCountBadge',
+      selectAllId: 'planSelectAll', deselectAllId: 'planDeselectAll', dataKey: 'name',
+    });
+
+    // ── Flat-list helpers (no collapse header) ────────────────────────────────
+    // Used for the Suite and TC sub-panels which live inside an already-expanded body.
+
+    function attachListSearch(searchId, listId, dataKey) {
+      const search = document.getElementById(searchId);
+      const list   = document.getElementById(listId);
+      search.addEventListener('input', () => {
+        const q = search.value.toLowerCase();
+        list.querySelectorAll('.picker-item').forEach(item =>
+          item.classList.toggle('hidden-filter', !item.dataset[dataKey].toLowerCase().includes(q))
+        );
       });
-      repos.forEach(repo => {
-        const item = document.createElement('label');
-        item.className = 'repo-item' + (checked.has(repo.name) ? ' checked' : '');
-        item.dataset.name = repo.name;
-        item.innerHTML = `
-          <input type="checkbox" value="${repo.name}" ${checked.has(repo.name) ? 'checked' : ''}>
-          <div class="repo-checkbox">${checked.has(repo.name) ? '✓' : ''}</div>
-          <span class="repo-name" title="${repo.name}">${repo.name}</span>`;
-        item.addEventListener('click', (e) => {
-          e.preventDefault();
+    }
+
+    function attachSelectAll(selectAllId, deselectAllId, listId, onChange) {
+      function setAll(checked) {
+        document.getElementById(listId).querySelectorAll('.picker-item:not(.hidden-filter)').forEach(item => {
           const cb = item.querySelector('input');
-          cb.checked = !cb.checked;
-          item.classList.toggle('checked', cb.checked);
-          item.querySelector('.repo-checkbox').textContent = cb.checked ? '✓' : '';
-          updateRepoBadge();
-          repoValidation.classList.remove('visible');
+          cb.checked = checked;
+          item.classList.toggle('checked', checked);
+          item.querySelector('.picker-checkbox').textContent = checked ? '✓' : '';
         });
-        repoList.appendChild(item);
-      });
-      updateRepoBadge();
+        if (onChange) onChange();
+      }
+      document.getElementById(selectAllId).addEventListener('click',   () => setAll(true));
+      document.getElementById(deselectAllId).addEventListener('click', () => setAll(false));
     }
 
-    function getSelectedRepos() {
-      return Array.from(repoList.querySelectorAll('input[type="checkbox"]:checked'))
-        .map(cb => cb.value);
+    // Render items as checkboxes into a list element.
+    function renderList(listId, items, dataKey, onToggle) {
+      const list = document.getElementById(listId);
+      list.innerHTML = '';
+      items.forEach(item => {
+        const el = document.createElement('label');
+        el.className = 'picker-item';
+        el.dataset[dataKey] = item.name;
+        el.innerHTML = `
+          <input type="checkbox" value="${item.id}">
+          <div class="picker-checkbox"></div>
+          <span class="picker-item-name" title="${item.name}">${item.name}</span>`;
+        el.addEventListener('click', e => {
+          e.preventDefault();
+          const cb = el.querySelector('input');
+          cb.checked = !cb.checked;
+          el.classList.toggle('checked', cb.checked);
+          el.querySelector('.picker-checkbox').textContent = cb.checked ? '✓' : '';
+          if (onToggle) onToggle();
+        });
+        list.appendChild(el);
+      });
     }
 
-    function updateRepoBadge() {
-      const n = getSelectedRepos().length;
-      repoCountBadge.textContent = n === 0 ? '' : `${n} selected`;
-      repoCountBadge.classList.toggle('visible', n > 0);
+    function getCheckedIds(listId) {
+      return Array.from(document.getElementById(listId).querySelectorAll('input:checked')).map(cb => cb.value);
     }
 
-    // Collapse/expand
-    repoPickerHeader.addEventListener('click', () => {
-      const isOpen = repoPickerBody.classList.toggle('open');
-      repoChevron.classList.toggle('open', isOpen);
-      if (isOpen && !reposLoaded) loadRepos();
+    // Wire up search + select-all for the suite and TC panels
+    attachListSearch('suiteSearch', 'suiteList', 'name');
+    attachSelectAll('suiteSelectAll', 'suiteDeselectAll', 'suiteList', onSuiteToggle);
+    attachListSearch('tcSearch', 'tcList', 'name');
+    attachSelectAll('tcSelectAll', 'tcDeselectAll', 'tcList');
+
+    function getSelectedPlanIds()  { return getCheckedIds('planList').map(Number); }
+    function getSelectedSuiteIds() { return getCheckedIds('suiteList').map(Number); }
+
+    // Render suites filtered to the selected plans — suiteLevel is only visible when ≥1 plan is selected
+    function refreshSuiteList() {
+      const selectedPlanIds = getSelectedPlanIds();
+      const suiteLevel = document.getElementById('suiteLevel');
+      const tcLevel    = document.getElementById('tcLevel');
+
+      if (!selectedPlanIds.length) {
+        // No plan selected — hide both dependent levels
+        suiteLevel.classList.add('hidden');
+        tcLevel.classList.add('hidden');
+        document.getElementById('tcList').innerHTML = '';
+        return;
+      }
+
+      // At least one plan selected — reveal suites and reset TC level
+      suiteLevel.classList.remove('hidden');
+      tcLevel.classList.add('hidden');
+      document.getElementById('tcList').innerHTML = '';
+
+      const visible = allSuiteData.filter(s => selectedPlanIds.includes(s.plan_id));
+
+      // Disambiguate duplicate suite names across plans
+      const items = visible.map(s => ({
+        id:   s.id,
+        name: visible.some(x => x.name === s.name && x.plan_id !== s.plan_id)
+              ? `${s.name}  (${s.plan_name})`
+              : s.name,
+      }));
+      renderList('suiteList', items, 'name', onSuiteToggle);
+    }
+
+    async function onSuiteToggle() {
+      const selectedSuiteIds = getSelectedSuiteIds();
+      const tcLevel = document.getElementById('tcLevel');
+      if (!selectedSuiteIds.length) {
+        tcLevel.classList.add('hidden');
+        return;
+      }
+      tcLevel.classList.remove('hidden');
+
+      // Build "planId:suiteId" pairs from allSuiteData — sorted so cache key is stable
+      const pairs = selectedSuiteIds
+        .map(sid => allSuiteData.find(s => s.id === sid))
+        .filter(Boolean)
+        .map(s => `${s.plan_id}:${s.id}`)
+        .sort()
+        .join(',');
+
+      if (tcCache[pairs]) {
+        renderList('tcList', tcCache[pairs], 'name', null);
+        return;
+      }
+
+      const tcList = document.getElementById('tcList');
+      tcList.innerHTML = '<div class="picker-loading">Loading test cases…</div>';
+      try {
+        const data = await fetch(`/api/test-cases?suites=${encodeURIComponent(pairs)}`).then(r => r.json());
+        tcCache[pairs] = data.test_cases || [];
+        renderList('tcList', tcCache[pairs], 'name', null);
+      } catch {
+        tcList.innerHTML = '<div class="picker-loading">Failed to load test cases.</div>';
+      }
+    }
+
+    async function loadTestPickerData() {
+      if (plansLoaded && suitesLoaded) return;
+
+      // Load plans and suites in parallel
+      const [planRes, suiteRes] = await Promise.allSettled([
+        fetch('/api/test-plans').then(r => r.json()),
+        fetch('/api/test-suites').then(r => r.json()),
+      ]);
+
+      // Plans
+      if (planRes.status === 'fulfilled') {
+        document.getElementById('planLoading').style.display = 'none';
+        planPicker.renderItems(planRes.value.plans || [], () => refreshSuiteList());
+        plansLoaded = true;
+      } else {
+        document.getElementById('planLoading').textContent = 'Failed to load test plans.';
+      }
+
+      // Suites — suiteLevel visibility is controlled by refreshSuiteList() based on plan selection
+      const suiteLoading = document.getElementById('suiteLoading');
+      if (suiteRes.status === 'fulfilled') {
+        allSuiteData = suiteRes.value.suites || [];
+        if (suiteLoading) suiteLoading.style.display = 'none';
+        suitesLoaded = true;
+      } else {
+        if (suiteLoading) suiteLoading.textContent = 'Failed to load suites.';
+      }
+
+      // Auto-expand the top-level body
+      document.getElementById('testPickerBody').classList.add('open');
+      document.getElementById('testChevron').classList.add('open');
+    }
+
+    document.getElementById('srcTests').addEventListener('change', e => {
+      if (e.target.checked) loadTestPickerData();
     });
 
-    // Filter
-    repoSearch.addEventListener('input', () => {
-      const q = repoSearch.value.toLowerCase();
-      repoList.querySelectorAll('.repo-item').forEach(item => {
-        item.classList.toggle('hidden-filter', !item.dataset.name.toLowerCase().includes(q));
-      });
+    // Clear test validation message whenever the user makes any selection in the test picker
+    document.getElementById('testPickerBody').addEventListener('change', () => {
+      document.getElementById('testValidation').classList.remove('visible');
     });
 
-    // Select / deselect all (filtered)
-    document.getElementById('repoSelectAll').addEventListener('click', () => {
-      repoList.querySelectorAll('.repo-item:not(.hidden-filter)').forEach(item => {
-        const cb = item.querySelector('input');
-        cb.checked = true;
-        item.classList.add('checked');
-        item.querySelector('.repo-checkbox').textContent = '✓';
-      });
-      updateRepoBadge();
-      repoValidation.classList.remove('visible');
-    });
-    document.getElementById('repoDeselectAll').addEventListener('click', () => {
-      repoList.querySelectorAll('.repo-item:not(.hidden-filter)').forEach(item => {
-        const cb = item.querySelector('input');
-        cb.checked = false;
-        item.classList.remove('checked');
-        item.querySelector('.repo-checkbox').textContent = '';
-      });
-      updateRepoBadge();
-    });
-
+    // ── Helpers ───────────────────────────────────────────────────────────────
     function now() {
       return new Date().toLocaleTimeString('en-GB', { hour12: false });
     }
@@ -832,7 +1164,7 @@
       const el = document.getElementById(`pill-${step}`);
       if (!el) return;
       el.className = `pill ${state}`;
-      const icons = { active: '⟳ ', done: '✓ ', error: '✕ ' };
+      const icons  = { active: '⟳ ', done: '✓ ', error: '✕ ' };
       const labels = { crawl: 'Crawl', chunk: 'Chunk', embed: 'Embed', index: 'Index', upload: 'Upload' };
       el.textContent = (icons[state] || '') + labels[step];
     }
@@ -849,75 +1181,101 @@
     }
 
     function showSummary(s) {
-      document.getElementById('s-pages').textContent = s.pages ?? '—';
-      document.getElementById('s-skipped').textContent = s.skipped ?? '—';
-      document.getElementById('s-chunks').textContent = s.chunks ?? '—';
+      document.getElementById('s-pages').textContent   = s.pages    ?? '—';
+      document.getElementById('s-skipped').textContent = s.skipped  ?? '—';
+      document.getElementById('s-chunks').textContent  = s.chunks   ?? '—';
       document.getElementById('s-uploaded').textContent = s.uploaded ?? '—';
-      document.getElementById('s-failed').textContent = s.failed ?? 0;
-      document.getElementById('s-blob').textContent = s.blob ?? '—';
-
+      document.getElementById('s-failed').textContent  = s.failed   ?? 0;
+      document.getElementById('s-blob').textContent    = s.blob     ?? '—';
       const hasBreakdown = s.wiki_count != null || s.code_count != null || s.test_count != null;
       if (hasBreakdown) {
-        document.getElementById('s-wiki').textContent = s.wiki_count ?? '—';
-        document.getElementById('s-code').textContent = s.code_count ?? '—';
-        document.getElementById('s-tests').textContent = s.test_count ?? '—';
+        document.getElementById('s-wiki').textContent  = s.wiki_count  ?? '—';
+        document.getElementById('s-code').textContent  = s.code_count  ?? '—';
+        document.getElementById('s-tests').textContent = s.test_count  ?? '—';
         document.getElementById('source-breakdown').style.display = 'grid';
       }
-
       summaryEl.style.display = 'block';
     }
 
+    // ── Start button ──────────────────────────────────────────────────────────
     btn.addEventListener('click', () => {
-      // Validate: if code crawl is on, at least one repo must be selected
-      const codeChecked = document.getElementById('srcCode').checked;
+      const codeChecked  = document.getElementById('srcCode').checked;
+      const testsChecked = document.getElementById('srcTests').checked;
+
+      // Validate: code requires ≥1 repo
       if (crawlToggle.checked && codeChecked) {
-        const selected = getSelectedRepos();
-        if (selected.length === 0) {
-          repoValidation.classList.add('visible');
-          // Expand the picker so the user can see the message
-          repoPickerBody.classList.add('open');
-          repoChevron.classList.add('open');
+        const sel = repoPicker.getChecked();
+        if (!sel.length) {
+          document.getElementById('repoValidation').classList.add('visible');
+          document.getElementById('repoPickerBody').classList.add('open');
+          document.getElementById('repoChevron').classList.add('open');
           return;
         }
+      }
+
+      // Validate: tests requires ≥1 plan, ≥1 suite, ≥1 test case
+      if (crawlToggle.checked && testsChecked) {
+        const validationEl = document.getElementById('testValidation');
+        document.getElementById('testPickerBody').classList.add('open');
+        document.getElementById('testChevron').classList.add('open');
+        if (!planPicker.getChecked().length) {
+          validationEl.textContent = 'Select at least one Test Plan.';
+          validationEl.classList.add('visible');
+          return;
+        }
+        if (!getCheckedIds('suiteList').length) {
+          validationEl.textContent = 'Select at least one Test Suite.';
+          validationEl.classList.add('visible');
+          return;
+        }
+        if (!getCheckedIds('tcList').length) {
+          validationEl.textContent = 'Select at least one Test Case.';
+          validationEl.classList.add('visible');
+          document.getElementById('tcLevel').classList.remove('hidden');
+          return;
+        }
+        validationEl.classList.remove('visible');
       }
 
       resetUI();
       btn.disabled = true;
       btn.innerHTML = '<span class="btn-icon">⏳</span> Running…';
 
-      const selectedRepos = crawlToggle.checked && codeChecked ? getSelectedRepos() : [];
+      const selectedRepos  = crawlToggle.checked && codeChecked  ? repoPicker.getChecked()        : [];
+      const selectedPlans  = crawlToggle.checked && testsChecked ? planPicker.getChecked()        : [];
+      const selectedSuites = crawlToggle.checked && testsChecked ? getCheckedIds('suiteList')     : [];
+      const selectedTcs    = crawlToggle.checked && testsChecked ? getCheckedIds('tcList')        : [];
+
       const params = new URLSearchParams({
         crawl:  crawlToggle.checked,
         wiki:   document.getElementById('srcWiki').checked,
         code:   codeChecked,
-        tests:  document.getElementById('srcTests').checked,
+        tests:  testsChecked,
         repos:  selectedRepos.join(','),
+        plans:  selectedPlans.join(','),
+        suites: selectedSuites.join(','),
+        tcs:    selectedTcs.join(','),
       });
+
       const es = new EventSource('/ingest/stream?' + params.toString());
 
-      es.onmessage = (e) => {
+      es.onmessage = e => {
         const evt = JSON.parse(e.data);
-
         if (evt.step === '__done__') {
           es.close();
           btn.disabled = false;
           btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
           return;
         }
-
         const { step, status, message, summary } = evt;
-
         setPill(step, status);
-
         const logType = status === 'done' ? 'success' : status === 'error' ? 'error' : 'active';
         addLog(`[${step.toUpperCase()}] ${message}`, logType);
-
         if (status === 'error') {
           es.close();
           btn.disabled = false;
           btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
         }
-
         if (summary) showSummary(summary);
       };
 

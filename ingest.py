@@ -188,8 +188,24 @@ def _fetch_wiki_page(path: str) -> dict:
     params = {"path": path, "includeContent": "true", "api-version": _API_VERSION}
     resp = requests.get(f"{_WIKI_BASE}/pages", headers=_HEADERS, params=params)
     resp.raise_for_status()
-    data = resp.json()
+    data         = resp.json()
+    page_id      = data.get("id")
     md_content   = data.get("content", "")
+
+    # Append page discussion comments if any
+    if page_id:
+        comments = _fetch_wiki_page_comments(page_id)
+        if comments:
+            comment_lines = ["\n\n## Page Comments\n"]
+            for c in comments:
+                author = c.get("createdBy", {}).get("displayName") or \
+                         c.get("createdBy", {}).get("uniqueName") or "Unknown"
+                date   = (c.get("createdDate") or "")[:10]
+                text   = BeautifulSoup(c.get("content") or "", "html.parser").get_text("\n").strip()
+                if text:
+                    comment_lines += [f"**{author}** ({date}):", "", text, ""]
+            md_content += "\n".join(comment_lines)
+
     html_content = markdown.markdown(md_content, extensions=["extra", "toc", "tables", "fenced_code"])
     links        = _extract_wiki_links(html_content, base_path=path)
     return {
@@ -200,6 +216,33 @@ def _fetch_wiki_page(path: str) -> dict:
         "links":      links,
         "crawled_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+def _fetch_wiki_page_comments(page_id: int) -> list[dict]:
+    """Fetch all discussion comments for a wiki page."""
+    comments: list[dict] = []
+    params: dict = {"api-version": "7.1-preview.1", "$top": 100}
+    while True:
+        try:
+            r = requests.get(
+                f"{_WIKI_BASE}/pages/{page_id}/comments",
+                headers=_HEADERS,
+                params=params,
+            )
+            if not r.ok:
+                break
+            data  = r.json()
+            batch = data.get("value", [])
+            comments.extend(batch)
+            # Wiki comments API uses $skip-based paging, not a continuation token
+            if len(batch) < 100:
+                break
+            params = {"api-version": "7.1-preview.1", "$top": 100,
+                      "$skip": len(comments)}
+        except Exception as exc:
+            log.debug("Could not fetch comments for wiki page %s: %s", page_id, exc)
+            break
+    return comments
 
 
 def _extract_wiki_links(html: str, base_path: str) -> list[str]:
@@ -406,8 +449,48 @@ def _crawl_code_files(selected_repos: list[str] | None = None):
 # STEP 1C — Test Management crawl
 # ===========================================================================
 
-def _parse_test_steps(steps_xml: str) -> list[tuple[str, str]]:
-    """Parse the TCM steps XML blob into [(action, expected_result), …]."""
+def _ps_text(elem) -> str:
+    """Extract clean text from a TCM <parameterizedString> element.
+
+    Azure DevOps stores step content as HTML inside the XML in two different ways
+    depending on the DevOps version / editor used:
+
+    Format A — HTML-encoded text node (most common):
+        <parameterizedString>&lt;DIV&gt;&lt;P&gt;Do X&lt;/P&gt;&lt;/DIV&gt;</parameterizedString>
+        ElementTree decodes entities → elem.text = "<DIV><P>Do X</P></DIV>"
+        elem has NO child elements.
+
+    Format B — actual XML child elements:
+        <parameterizedString><DIV><P>Do X</P></DIV></parameterizedString>
+        elem.text is None/empty; text lives in child nodes.
+
+    Using elem.text alone (the previous approach) silently returns "" for Format B,
+    which is why steps disappeared for test cases written in that format.
+    """
+    if list(elem):
+        # Format B: real child elements — itertext() walks the whole subtree
+        return " ".join("".join(elem.itertext()).split())
+
+    # Format A: HTML-encoded text node — ElementTree already decoded the entities,
+    # so elem.text IS literal HTML like "<DIV><P>Do X</P></DIV>".
+    # Pass it through BeautifulSoup to strip the markup.
+    raw = (elem.text or "").strip()
+    if not raw:
+        return ""
+    return " ".join(
+        BeautifulSoup(html_lib.unescape(raw), "html.parser").get_text(" ").split()
+    )
+
+
+def _parse_test_steps(
+    steps_xml: str,
+    shared_steps_cache: dict[int, list[tuple[str, str]]] | None = None,
+) -> list[tuple[str, str]]:
+    """Parse the TCM steps XML blob into [(action, expected_result), …].
+
+    If shared_steps_cache is provided, SharedStep references are resolved inline
+    by substituting the referenced shared step's own parsed steps.
+    """
     if not steps_xml:
         return []
     try:
@@ -419,18 +502,26 @@ def _parse_test_steps(steps_xml: str) -> list[tuple[str, str]]:
     result = []
     for step in root.iter("step"):
         if step.get("type") == "SharedStep":
-            result.append((f"[Shared step — work item {step.get('ref', '?')}]", ""))
+            ref_id = step.get("ref")
+            if shared_steps_cache and ref_id:
+                try:
+                    resolved = shared_steps_cache.get(int(ref_id))
+                    if resolved:
+                        result.extend(resolved)
+                        continue
+                except (ValueError, TypeError):
+                    pass
+            # Fallback: no cache or not found — emit a readable placeholder
+            result.append((f"[Shared steps from work item {ref_id or '?'}]", ""))
             continue
 
         strings = step.findall("parameterizedString")
         action  = expected = ""
 
         if strings:
-            raw = strings[0].text or ""
-            action = BeautifulSoup(html_lib.unescape(raw), "html.parser").get_text(" ").strip()
+            action = _ps_text(strings[0])
         if len(strings) > 1:
-            raw = strings[1].text or ""
-            expected = BeautifulSoup(html_lib.unescape(raw), "html.parser").get_text(" ").strip()
+            expected = _ps_text(strings[1])
 
         if action or expected:
             result.append((action, expected))
@@ -438,19 +529,91 @@ def _parse_test_steps(steps_xml: str) -> list[tuple[str, str]]:
     return result
 
 
-def _format_test_case_markdown(work_item: dict, plan_name: str, suite_name: str) -> str:
+def _collect_shared_step_ids(steps_xml: str) -> set[int]:
+    """Return the set of SharedStep work item IDs referenced in a steps XML blob."""
+    if not steps_xml or "SharedStep" not in steps_xml:
+        return set()
+    try:
+        root = ET.fromstring(steps_xml)
+        ids = set()
+        for step in root.iter("step"):
+            if step.get("type") == "SharedStep":
+                ref = step.get("ref")
+                if ref:
+                    try:
+                        ids.add(int(ref))
+                    except ValueError:
+                        pass
+        return ids
+    except ET.ParseError:
+        return set()
+
+
+def _fetch_work_item_comments(wi_id: int) -> list[dict]:
+    """Fetch all discussion comments for a work item (paginated)."""
+    comments: list[dict] = []
+    params: dict = {"api-version": "7.1-preview.4", "$top": 200}
+    while True:
+        try:
+            r = requests.get(
+                f"{_API_BASE}/wit/workitems/{wi_id}/comments",
+                headers=_HEADERS,
+                params=params,
+            )
+            if not r.ok:
+                break
+            data  = r.json()
+            batch = data.get("comments", [])
+            comments.extend(batch)
+            token = data.get("continuationToken")
+            if not token or not batch:
+                break
+            params = {"api-version": "7.1-preview.4", "$top": 200, "continuationToken": token}
+        except Exception as exc:
+            log.debug("Could not fetch comments for work item %s: %s", wi_id, exc)
+            break
+    return comments
+
+
+def _identity_display(field_value) -> str:
+    """Return the display name from an identity field (object or plain string)."""
+    if isinstance(field_value, dict):
+        return field_value.get("displayName", "") or field_value.get("uniqueName", "")
+    return str(field_value) if field_value else ""
+
+
+def _format_test_case_markdown(
+    work_item: dict,
+    plan_name: str,
+    suite_name: str,
+    comments: list[dict] | None = None,
+    shared_steps_cache: dict[int, list[tuple[str, str]]] | None = None,
+) -> str:
     """Serialise a test case work item to a rich Markdown document."""
     fields = work_item.get("fields", {})
     wi_id  = work_item.get("id", "")
 
-    title       = fields.get("System.Title", "")
+    title        = fields.get("System.Title", "")
+    state        = fields.get("System.State", "")
+    area_path    = fields.get("System.AreaPath", "")
+    iteration    = fields.get("System.IterationPath", "")
+    assigned_to  = _identity_display(fields.get("System.AssignedTo"))
+    created_by   = _identity_display(fields.get("System.CreatedBy"))
+    created_date = (fields.get("System.CreatedDate") or "")[:10]
+    changed_by   = _identity_display(fields.get("System.ChangedBy"))
+    changed_date = (fields.get("System.ChangedDate") or "")[:10]
+    priority     = fields.get("Microsoft.VSTS.Common.Priority", "")
+    auto_status  = fields.get("Microsoft.VSTS.TCM.AutomationStatus", "")
+    tags         = fields.get("System.Tags", "") or ""
+
     raw_desc    = fields.get("System.Description", "") or ""
     description = BeautifulSoup(raw_desc, "html.parser").get_text("\n").strip()
-    tags        = fields.get("System.Tags", "") or ""
-    priority    = fields.get("Microsoft.VSTS.Common.Priority", "")
-    auto_status = fields.get("Microsoft.VSTS.TCM.AutomationStatus", "")
-    steps_xml   = fields.get("Microsoft.VSTS.TCM.Steps", "") or ""
-    steps       = _parse_test_steps(steps_xml)
+
+    raw_accept   = fields.get("Microsoft.VSTS.Common.AcceptanceCriteria", "") or ""
+    acceptance   = BeautifulSoup(raw_accept, "html.parser").get_text("\n").strip()
+
+    steps_xml = fields.get("Microsoft.VSTS.TCM.Steps", "") or ""
+    steps     = _parse_test_steps(steps_xml, shared_steps_cache=shared_steps_cache)
 
     lines = [
         f"# Test Case: {title}",
@@ -459,15 +622,30 @@ def _format_test_case_markdown(work_item: dict, plan_name: str, suite_name: str)
         f"**Test Plan:** {plan_name}",
         f"**Test Suite:** {suite_name}",
     ]
+    if state:
+        lines.append(f"**State:** {state}")
     if priority:
         lines.append(f"**Priority:** {priority}")
     if auto_status:
         lines.append(f"**Automation Status:** {auto_status}")
+    if assigned_to:
+        lines.append(f"**Assigned To:** {assigned_to}")
+    if area_path:
+        lines.append(f"**Area Path:** {area_path}")
+    if iteration:
+        lines.append(f"**Iteration:** {iteration}")
     if tags:
         lines.append(f"**Tags / Feature Areas:** {tags}")
+    if created_by:
+        lines.append(f"**Created By:** {created_by}" + (f" ({created_date})" if created_date else ""))
+    if changed_by:
+        lines.append(f"**Last Modified By:** {changed_by}" + (f" ({changed_date})" if changed_date else ""))
 
     if description:
         lines += ["", "## Description", "", description]
+
+    if acceptance:
+        lines += ["", "## Acceptance Criteria", "", acceptance]
 
     if steps:
         lines += ["", "## Test Steps", "",
@@ -478,14 +656,32 @@ def _format_test_case_markdown(work_item: dict, plan_name: str, suite_name: str)
             e = (expected or "—").replace("|", "\\|")
             lines.append(f"| {i} | {a} | {e} |")
 
+    if comments:
+        lines += ["", "## Discussion", ""]
+        for comment in comments:
+            author   = _identity_display(comment.get("createdBy")) or "Unknown"
+            date     = (comment.get("createdDate") or "")[:10]
+            raw_text = comment.get("text", "") or ""
+            text     = BeautifulSoup(raw_text, "html.parser").get_text("\n").strip()
+            if text:
+                lines += [f"**{author}** ({date}):", "", text, ""]
+
     return "\n".join(lines)
 
 
-def _crawl_test_cases():
+def _crawl_test_cases(
+    selected_plan_ids: set[int] | None = None,
+    selected_suite_ids: set[int] | None = None,
+    selected_tc_ids: set[int] | None = None,
+):
     """
     Generator yielding ("event", message_str) or ("record", dict).
-    Crawls all test plans → suites → test cases and batch-fetches work items.
+    Crawls test plans → suites → test cases and batch-fetches work items.
     Test cases appearing in multiple suites are deduplicated by work item ID.
+
+    selected_plan_ids:  if provided, only crawl these plan IDs
+    selected_suite_ids: if provided, only crawl these suite IDs
+    selected_tc_ids:    if provided, only fetch these work item IDs
     """
     # List all test plans (paginated)
     plans = []
@@ -503,7 +699,11 @@ def _crawl_test_cases():
             break
         plan_params = {"api-version": _API_VERSION, "$top": 500, "continuationToken": token}
 
-    yield "event", f"[Tests] Found {len(plans)} test plan(s)"
+    # Filter to selected plans if provided
+    if selected_plan_ids:
+        plans = [p for p in plans if p["id"] in selected_plan_ids]
+
+    yield "event", f"[Tests] Processing {len(plans)} test plan(s)"
 
     # Collect unique test case IDs → (plan_name, suite_name)
     tc_map: dict[int, tuple[str, str]] = {}
@@ -512,7 +712,7 @@ def _crawl_test_cases():
         plan_id   = plan["id"]
         plan_name = plan.get("name", f"Plan {plan_id}")
 
-        yield "event", f"[Tests] Scanning plan {p_idx}/{len(plans)}: {plan_name}…"
+        yield "event", f"[Tests] Plan {p_idx}/{len(plans)}: '{plan_name}' — scanning suites…"
 
         # Paginate suites — Azure returns x-ms-continuationtoken when more pages exist
         try:
@@ -532,16 +732,19 @@ def _crawl_test_cases():
                 params = {"api-version": _API_VERSION, "$top": 500, "continuationToken": token}
         except Exception as exc:
             log.warning("Failed to list suites for plan %s: %s", plan_name, exc)
-            yield "event", f"[Tests] Could not list suites for {plan_name} — skipping"
+            yield "event", f"[Tests] Could not list suites for '{plan_name}' — skipping"
             continue
 
-        for suite in suites:
+        # Filter to selected suites if provided
+        if selected_suite_ids:
+            suites = [s for s in suites if s["id"] in selected_suite_ids]
+
+        non_root = [s for s in suites if s.get("name") != plan_name]
+        yield "event", f"[Tests] '{plan_name}' — found {len(non_root)} suite(s)"
+
+        for s_idx, suite in enumerate(non_root, 1):
             suite_id   = suite["id"]
             suite_name = suite.get("name", f"Suite {suite_id}")
-
-            # Skip the root suite (always named the same as the plan)
-            if suite_name == plan_name:
-                continue
 
             # Paginate test cases within each suite
             try:
@@ -563,16 +766,28 @@ def _crawl_test_cases():
                 log.warning("Failed to list test cases for %s/%s: %s", plan_name, suite_name, exc)
                 continue
 
+            # Filter to selected test cases if provided
+            if selected_tc_ids:
+                test_cases = [tc for tc in test_cases
+                              if tc.get("workItem", {}).get("id") in selected_tc_ids]
+
+            added = 0
             for tc in test_cases:
                 wi_id = tc.get("workItem", {}).get("id")
                 if wi_id and wi_id not in tc_map:
                     tc_map[wi_id] = (plan_name, suite_name)
+                    added += 1
+
+            yield "event", (
+                f"[Tests] Suite {s_idx}/{len(non_root)}: '{suite_name}' "
+                f"→ {len(test_cases)} test case(s) ({added} new)"
+            )
 
     yield "event", f"[Tests] Found {len(tc_map)} unique test case(s) — fetching details…"
 
     # Batch-fetch work items (≤ 200 per call)
-    wi_ids   = list(tc_map.keys())
-    records  = []
+    wi_ids    = list(tc_map.keys())
+    work_items_all: list[dict] = []
     n_batches = max(1, (len(wi_ids) + 199) // 200)
 
     for i in range(0, len(wi_ids), 200):
@@ -587,13 +802,12 @@ def _crawl_test_cases():
                 params={"ids": ids_str, "$expand": "all", "api-version": _API_VERSION},
             )
             wr.raise_for_status()
-            work_items = wr.json().get("value", [])
+            work_items_all.extend(wr.json().get("value", []))
         except Exception as exc:
             # Batch failed because one or more IDs are deleted/inaccessible.
             # Fall back to fetching each ID individually so valid items are kept.
             log.warning("Batch %d failed (%s) — retrying individually…", batch_num, exc)
             yield "event", f"[Tests] Batch {batch_num} failed — retrying {len(batch)} items individually…"
-            work_items = []
             skipped = 0
             for wi_id_single in batch:
                 try:
@@ -603,26 +817,73 @@ def _crawl_test_cases():
                         params={"$expand": "all", "api-version": _API_VERSION},
                     )
                     sr.raise_for_status()
-                    work_items.append(sr.json())
+                    work_items_all.append(sr.json())
                 except Exception:
                     log.warning("Skipping inaccessible work item %s", wi_id_single)
                     skipped += 1
             if skipped:
                 yield "event", f"[Tests] Skipped {skipped} inaccessible work item(s) in batch {batch_num}"
 
-        for wi in work_items:
-            wi_id               = wi.get("id")
-            plan_name, suite_name = tc_map.get(wi_id, ("", ""))
-            md_content          = _format_test_case_markdown(wi, plan_name, suite_name)
-            html_content        = markdown.markdown(md_content, extensions=["extra", "tables"])
-            records.append({
-                "path":       f"/test-cases/{wi_id}",
-                "remote_url": f"https://dev.azure.com/{ORG}/{PROJECT}/_workitems/edit/{wi_id}",
-                "html":       html_content,
-                "markdown":   md_content,
-                "links":      [],
-                "crawled_at": datetime.now(timezone.utc).isoformat(),
-            })
+    # Collect all SharedStep work item IDs referenced across all test cases
+    all_shared_ids: set[int] = set()
+    for wi in work_items_all:
+        steps_xml = wi.get("fields", {}).get("Microsoft.VSTS.TCM.Steps", "") or ""
+        all_shared_ids |= _collect_shared_step_ids(steps_xml)
+
+    # Batch-fetch shared step work items and parse their steps into a cache
+    shared_steps_cache: dict[int, list[tuple[str, str]]] = {}
+    if all_shared_ids:
+        shared_id_list = list(all_shared_ids)
+        yield "event", f"[Tests] Resolving {len(shared_id_list)} shared step(s)…"
+        for i in range(0, len(shared_id_list), 200):
+            batch = shared_id_list[i: i + 200]
+            try:
+                sr = requests.get(
+                    f"{_API_BASE}/wit/workitems",
+                    headers=_HEADERS,
+                    params={"ids": ",".join(str(x) for x in batch),
+                            "$expand": "all", "api-version": _API_VERSION},
+                )
+                sr.raise_for_status()
+                for shared_wi in sr.json().get("value", []):
+                    sid = shared_wi.get("id")
+                    sx  = shared_wi.get("fields", {}).get("Microsoft.VSTS.TCM.Steps", "") or ""
+                    if sid and sx:
+                        shared_steps_cache[sid] = _parse_test_steps(sx)
+            except Exception as exc:
+                log.warning("Failed to fetch shared steps batch: %s", exc)
+
+    # Fetch discussion threads in parallel (one request per test case)
+    yield "event", f"[Tests] Fetching discussion threads for {len(work_items_all)} test case(s)…"
+    comments_map: dict[int, list[dict]] = {}
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        futs = {pool.submit(_fetch_work_item_comments, wi.get("id")): wi.get("id")
+                for wi in work_items_all if wi.get("id")}
+        for fut in as_completed(futs):
+            wid = futs[fut]
+            try:
+                comments_map[wid] = fut.result()
+            except Exception:
+                comments_map[wid] = []
+
+    records: list[dict] = []
+    for wi in work_items_all:
+        wi_id                 = wi.get("id")
+        plan_name, suite_name = tc_map.get(wi_id, ("", ""))
+        md_content            = _format_test_case_markdown(
+            wi, plan_name, suite_name,
+            comments=comments_map.get(wi_id, []),
+            shared_steps_cache=shared_steps_cache,
+        )
+        html_content = markdown.markdown(md_content, extensions=["extra", "tables"])
+        records.append({
+            "path":       f"/test-cases/{wi_id}",
+            "remote_url": f"https://dev.azure.com/{ORG}/{PROJECT}/_workitems/edit/{wi_id}",
+            "html":       html_content,
+            "markdown":   md_content,
+            "links":      [],
+            "crawled_at": datetime.now(timezone.utc).isoformat(),
+        })
 
     for r in records:
         yield "record", r
@@ -714,6 +975,31 @@ def _path_source_type(path: str) -> tuple[str, list[str]]:
     return "wiki", ["wiki"]
 
 
+def _tc_identity_prefix(text: str) -> str:
+    """Extract a short identity header from a test case markdown document.
+
+    Returns a prefix like:
+        Test Case 296199 · isMarketPlaceClient set to true…
+    so that every chunk produced from a split test case document still
+    contains the TC ID and title and remains discoverable by ID.
+    """
+    wi_id = title = ""
+    for line in text.splitlines():
+        line = line.strip()
+        if line.startswith("**ID:**"):
+            wi_id = line.replace("**ID:**", "").strip()
+        elif line.startswith("# Test Case:"):
+            title = line.replace("# Test Case:", "").strip()
+        if wi_id and title:
+            break
+    if wi_id:
+        label = f"Test Case {wi_id}"
+        if title:
+            label += f" · {title}"
+        return label + "\n\n"
+    return ""
+
+
 def chunk_records(records: list[dict]) -> list[dict]:
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
@@ -729,15 +1015,22 @@ def chunk_records(records: list[dict]) -> list[dict]:
         text        = record.get("markdown", "").strip() or html_to_text(record.get("html", ""))
         if not text:
             continue
+
+        # For test cases: build a short identity prefix to prepend to every
+        # non-first chunk so all chunks remain queryable by TC ID / title.
+        is_test_case  = path.startswith("/test-cases/")
+        tc_prefix     = _tc_identity_prefix(text) if is_test_case else ""
+
         lc_docs = splitter.create_documents(
             texts=[text],
             metadatas=[{"path": path, "url": url, "crawled_at": crawled_at}],
         )
         for idx, doc in enumerate(lc_docs):
-            safe_id = re.sub(r"[^a-zA-Z0-9_\-=]", "_", path.strip("/").replace("/", "__")) or "root"
+            safe_id   = re.sub(r"[^a-zA-Z0-9_\-=]", "_", path.strip("/").replace("/", "__")) or "root"
+            chunk_text = (tc_prefix + doc.page_content) if (is_test_case and idx > 0) else doc.page_content
             chunks.append({
                 "id":          f"{safe_id}__{idx}",
-                "text":        doc.page_content,
+                "text":        chunk_text,
                 "path":        path,
                 "url":         url,
                 "crawled_at":  crawled_at,
@@ -886,6 +1179,9 @@ def run_pipeline(
     crawl_code: bool | None = None,
     crawl_tests: bool | None = None,
     selected_repos: list[str] | None = None,
+    selected_plan_ids: list[int] | None = None,
+    selected_suite_ids: list[int] | None = None,
+    selected_tc_ids: list[int] | None = None,
 ) -> Generator[dict, None, None]:
     """
     Runs the full pipeline, yielding SSE-ready event dicts:
@@ -972,8 +1268,11 @@ def run_pipeline(
             # ── Tests ──
             if do_tests:
                 yield event("crawl", "active", "[Tests] Starting test management crawl…")
+                plan_set  = set(selected_plan_ids)  if selected_plan_ids  else None
+                suite_set = set(selected_suite_ids) if selected_suite_ids else None
+                tc_set    = set(selected_tc_ids)    if selected_tc_ids    else None
                 try:
-                    for kind, value in _crawl_test_cases():
+                    for kind, value in _crawl_test_cases(plan_set, suite_set, tc_set):
                         if kind == "event":
                             yield event("crawl", "active", value)
                         else:

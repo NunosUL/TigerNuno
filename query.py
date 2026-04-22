@@ -10,9 +10,12 @@ Implements the query side of the RAG pipeline per the architecture diagram:
   5. Format         — answer text + source citations + confidence signal
 """
 
+import logging
 import os
 import re
 from dataclasses import dataclass
+
+log = logging.getLogger(__name__)
 
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
@@ -37,14 +40,24 @@ SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
 SEARCH_API_KEY = os.environ["AZURE_SEARCH_API_KEY"]
 SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "wiki-index")
 
-TOP_K = 15             # number of chunks retrieved from search
+TOP_K = 20             # number of chunks retrieved from semantic search
 MAX_CONTEXT_CHARS     = 16000  # ~4000 tokens of context sent to the LLM
+
+# Regex: matches "test case 296199", "TC 296199", "TC#296199", "test case #296199"
+_TC_ID_RE = re.compile(r'\b(?:test[\s_-]*case|tc)\s*#?\s*(\d{4,})\b', re.IGNORECASE)
 
 SEMANTIC_CONFIG_NAME  = "tigerchat-semantic"
 SCORING_PROFILE_NAME  = "source-boost"
-MIN_RERANKER_SCORE    = 1.0   # drop chunks below this threshold (reranker_score 0–4 scale)
+MIN_RERANKER_SCORE    = 1.8   # drop chunks below this threshold (reranker_score 0–4 scale)
+                               # raised from 1.0 — filters BM25-only keyword hits that the
+                               # semantic reranker considers only weakly relevant
 SEMANTIC_ENABLED      = os.environ.get("AZURE_SEARCH_SEMANTIC_ENABLED", "true").lower() == "true"
 BOOST_SOURCE_TYPE     = os.environ.get("BOOST_SOURCE_TYPE", "")  # "wiki" | "code" | "test" | "" = no boost
+
+# When a question pins specific TC IDs, supplementary (non-pinned) chunks must clear
+# a higher reranker bar and are capped at this many distinct source paths.
+PINNED_SUPPLEMENTARY_MIN_SCORE = 2.5
+PINNED_SUPPLEMENTARY_MAX_PATHS = 3
 
 SYSTEM_PROMPT = """You are a helpful assistant that answers questions about an internal
 Azure DevOps project. You have access to three types of source material:
@@ -61,7 +74,11 @@ Rules:
 - When answering about documentation, reference the wiki page.
 - Do NOT append a "Sources:" or "References:" list — sources are shown separately in the UI.
 - Be concise and structured. Use bullet points or numbered lists where appropriate.
-- Do not invent information not present in the context."""
+- Do not invent information not present in the context.
+- IMPORTANT — semantic precision: a question about "Export Service" means a specific
+  service/feature called "Export Service", NOT any test case that merely contains the word
+  "export". Only include results where the topic is genuinely and centrally about the
+  named concept. If in doubt, exclude and say so rather than listing loosely related items."""
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +109,52 @@ def embed_query(question: str) -> list[float]:
 # ---------------------------------------------------------------------------
 # Step 2: Hybrid search (vector + full-text)
 # ---------------------------------------------------------------------------
+
+def _extract_tc_ids(question: str) -> list[int]:
+    """Return any test-case numeric IDs explicitly mentioned in the question."""
+    return [int(m.group(1)) for m in _TC_ID_RE.finditer(question)]
+
+
+def _fetch_all_tc_chunks(tc_ids: list[int]) -> list[dict]:
+    """Fetch EVERY indexed chunk for the given TC IDs using a path filter.
+
+    This bypasses TOP_K and the semantic reranker threshold so that all sections
+    of a test case (metadata, Description, Test Steps, Discussion) are guaranteed
+    to appear in context when the user explicitly names the TC.
+    """
+    if not tc_ids:
+        return []
+    client = SearchClient(
+        endpoint=SEARCH_ENDPOINT,
+        index_name=SEARCH_INDEX_NAME,
+        credential=AzureKeyCredential(SEARCH_API_KEY),
+    )
+    all_chunks: list[dict] = []
+    for tc_id in tc_ids:
+        try:
+            results = client.search(
+                search_text="*",
+                filter=f"path eq '/test-cases/{tc_id}'",
+                select=["id", "text", "path", "url", "crawled_at"],
+                top=50,           # a single TC won't produce more than 50 chunks
+                # NOTE: do NOT use order_by — the id field is not sortable and
+                # Azure AI Search would throw, causing a silent empty return.
+            )
+            for r in results:
+                all_chunks.append({
+                    "id":             r["id"],
+                    "text":           r["text"],
+                    "path":           r.get("path", ""),
+                    "url":            r.get("url", ""),
+                    "crawled_at":     r.get("crawled_at", ""),
+                    "source_type":    "test",
+                    "score":          99.0,   # pin above any semantic result
+                    "reranker_score": 4.0,
+                })
+        except Exception as exc:
+            log.warning("Could not fetch TC chunks for id=%s: %s", tc_id, exc)
+    return all_chunks
+
 
 def _execute_search(question: str, query_vector: list[float]) -> list[dict]:
     """
@@ -156,11 +219,30 @@ def _execute_search(question: str, query_vector: list[float]) -> list[dict]:
 
 
 def hybrid_search(question: str, query_vector: list[float]) -> list[dict]:
-    """Search + optional semantic reranker, with min-score filter applied."""
-    chunks = _execute_search(question, query_vector)
+    """Hybrid search with TC-ID override.
+
+    When specific TC IDs are mentioned in the question, ALL their indexed chunks
+    are fetched directly (bypassing TOP_K and the reranker threshold) and prepended
+    to the normal semantic search results.  This guarantees that Description, Test
+    Steps, Discussion etc. are always present in context for explicitly named TCs.
+    """
+    # Direct fetch for explicitly mentioned TC IDs
+    tc_chunks = _fetch_all_tc_chunks(_extract_tc_ids(question))
+
+    # Normal semantic / hybrid search
+    semantic_chunks = _execute_search(question, query_vector)
     if SEMANTIC_ENABLED:
-        chunks = [c for c in chunks if (c.get("reranker_score") or 0) >= MIN_RERANKER_SCORE]
-    return chunks
+        semantic_chunks = [c for c in semantic_chunks
+                           if (c.get("reranker_score") or 0) >= MIN_RERANKER_SCORE]
+
+    # Merge: pinned TC chunks first, then remaining semantic results (deduped by id)
+    seen_ids = {c["id"] for c in tc_chunks}
+    merged = list(tc_chunks)
+    for c in semantic_chunks:
+        if c["id"] not in seen_ids:
+            seen_ids.add(c["id"])
+            merged.append(c)
+    return merged
 
 
 # ---------------------------------------------------------------------------
@@ -208,8 +290,10 @@ def build_context(chunks: list[dict]) -> tuple[str, list[dict]]:
             continue
         seen_ids.add(cid)
 
-        # Soft-cap per path: don't let a single file/page dominate context
-        if seen_paths.get(path, 0) > MAX_CONTEXT_CHARS // 4:
+        # Soft-cap per path: test cases may span many chunks (Description + Steps + Discussion)
+        # so they get a higher allowance; other sources get a quarter of the budget.
+        path_cap = MAX_CONTEXT_CHARS // 2 if path.startswith("/test-cases/") else MAX_CONTEXT_CHARS // 4
+        if seen_paths.get(path, 0) > path_cap:
             continue
 
         if total_chars + len(text) > MAX_CONTEXT_CHARS:
@@ -353,18 +437,31 @@ def answer_question_stream(question: str):
            "message": "Querying Azure AI Search (vector + BM25 + RRF)…"}
     raw_chunks = _execute_search(question, query_vector)
 
-    # Step 3 — Semantic reranker filter (happened server-side; we now apply min-score)
+    # Step 3 — Semantic reranker filter + TC-ID override
+    tc_ids = _extract_tc_ids(question)
+    tc_chunks = _fetch_all_tc_chunks(tc_ids)
+
     kept = ([c for c in raw_chunks if (c.get("reranker_score") or 0) >= MIN_RERANKER_SCORE]
             if SEMANTIC_ENABLED else raw_chunks)
     dropped = len(raw_chunks) - len(kept)
+
+    tc_msg = f" + {len(tc_chunks)} pinned chunk(s) from {len(tc_ids)} TC ID(s)" if tc_chunks else ""
     rerank_msg = (
         f"Semantic reranker scored {len(raw_chunks)} results — "
-        f"kept {len(kept)}, dropped {dropped} below threshold"
+        f"kept {len(kept)}, dropped {dropped} below threshold{tc_msg}"
         if SEMANTIC_ENABLED
-        else f"Retrieved {len(kept)} results (semantic reranker disabled)"
+        else f"Retrieved {len(kept)} results (semantic reranker disabled){tc_msg}"
     )
     yield {"type": "status", "step": "rerank", "message": rerank_msg}
-    chunks = kept
+
+    # Merge pinned TC chunks first, then semantic results (deduped by id)
+    seen_ids = {c["id"] for c in tc_chunks}
+    merged = list(tc_chunks)
+    for c in kept:
+        if c["id"] not in seen_ids:
+            seen_ids.add(c["id"])
+            merged.append(c)
+    chunks = merged
 
     # Step 4 — Context builder
     source_types = set(c.get("source_type", "wiki") for c in chunks)
