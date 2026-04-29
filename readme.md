@@ -1,6 +1,6 @@
 # TigerChat
 
-> **RAG-powered chat for Azure DevOps** — ask questions, get answers grounded in your Wiki, source code and test cases.
+> **RAG-powered chat for Azure DevOps** — ask questions, get answers grounded in your Wiki, source code, test cases, Work Items, and Commit Diffs.
 
 ![Python](https://img.shields.io/badge/Python-3.11+-3776ab?logo=python&logoColor=white)
 ![Azure AI Search](https://img.shields.io/badge/Azure%20AI%20Search-S1+-0078d4?logo=microsoftazure&logoColor=white)
@@ -11,13 +11,15 @@
 
 ## What is TigerChat?
 
-TigerChat indexes your internal Azure DevOps content and lets your team ask natural-language questions about it. Answers are grounded in three source types — **Wiki pages**, **Git source code files**, and **Test Management cases** — retrieved via hybrid search and answered by GPT-4o.
+TigerChat indexes your internal Azure DevOps content and lets your team ask natural-language questions about it. Answers are grounded in **five source types** — retrieved via hybrid search and answered by GPT-4o.
 
 | Source | What gets indexed |
 |---|---|
-| 📄 Wiki pages | All pages, recursively, as Markdown |
-| 📝 Source code | `.cs` `.razor` `.ts` `.js` `.json` `.xml` `.config` and more |
-| 🧪 Test plans | All test cases with steps and expected results |
+| 📄 Wiki pages | All pages across all wikis, recursively, as Markdown with discussion comments |
+| 💻 Source code | `.cs` `.csproj` `.razor` `.ts` `.js` `.json` `.xml` `.config` and more (up to 100 KB) |
+| 🧪 Test cases | All test cases with steps, expected results, shared steps resolved, and discussion threads |
+| 📋 Work Items | Epics, Features, User Stories, Tasks, and Bugs — with descriptions, acceptance criteria, linked items, comments, and attachments |
+| 🔀 Commit Diffs | Unified before/after diffs for every commit linked to a Bug or Task, including NuGet package change tables |
 
 ---
 
@@ -28,20 +30,24 @@ TigerChat indexes your internal Azure DevOps content and lets your team ask natu
 ```mermaid
 flowchart LR
     subgraph Sources["📦 Sources"]
-        W["📄 Wiki Pages"]
-        C["📝 Source Code"]
-        T["🧪 Test Plans"]
+        W["📄 Wiki"]
+        C["💻 Code"]
+        T["🧪 Tests"]
+        WI["📋 Work Items"]
+        D["🔀 Commit Diffs"]
     end
 
     W --> CR
     C --> CR
     T --> CR
+    WI --> CR
+    D --> CR
 
     CR["⚡ Crawl\nAzure DevOps API"]
-    CR --> CH["✂️ Chunk\n800 chars · overlap 100"]
+    CR --> CH["✂️ Chunk\n1000 chars · overlap 150"]
     CH --> EM["🔢 Embed\ntext-embedding-3-large\n3072 dims"]
     EM --> IX["🗄️ Index\nAzure AI Search\nHNSW · Semantic · ScoringProfile"]
-    IX --> UP["☁️ Upload\nMerge · Change detection"]
+    IX --> UP["☁️ Upload\nMerge · Change detection\nrag_hashes.json"]
 ```
 
 ### Query Pipeline
@@ -53,7 +59,8 @@ flowchart LR
     E --> HS["🔍 Hybrid Search\nVector + BM25\nRRF fusion · top-15"]
     HS --> SR["🧠 Semantic\nReranker\n@reranker_score 0–4"]
     SR --> MF["🚫 Min Score\nFilter ≥ 1.0"]
-    MF --> CB["📋 Context\nBuilder\n16k chars"]
+    MF --> CD["🔀 Commit Diff\nInjection\nsha: markers"]
+    CD --> CB["📋 Context\nBuilder\n~16k chars"]
     CB --> LLM["✦ GPT-4o\ntemp 0.2"]
     LLM --> R["📤 Answer\nSources · Confidence"]
 ```
@@ -76,15 +83,18 @@ Each answer carries a **High / Medium / Low** confidence badge derived from the 
 
 ## Features
 
-- **Three-source RAG** — Wiki, source code, and test cases all indexed and searchable together
+- **Five-source RAG** — Wiki, source code, test cases, Work Items (Epics/Features/Stories/Tasks/Bugs), and Commit Diffs all indexed and searchable together
 - **Hybrid search** — vector similarity + BM25 merged via Reciprocal Rank Fusion (RRF)
 - **Semantic Reranker** — neural cross-encoder re-scores results on a 0–4 scale (Azure AI Search S1+)
-- **Source type boosting** — optionally boost wiki / code / test results via `BOOST_SOURCE_TYPE` env var
+- **Commit Diff injection** — Work Item chunks embed `*sha:40-char-hex*` markers; at query time diffs are fetched and injected into context for accurate PFQ-style change reports
+- **NuGet package diffing** — `.csproj` changes in commits produce a `Package | Before | After` table indexed as a separate chunk
+- **Source type boosting** — boost wiki / code / test / workitem results via the `BOOST_SOURCE_TYPE` env var
 - **Min-score filter** — drops weakly-matched chunks before they reach GPT-4o
 - **Clickable citations** — every answer links back to the source in Azure DevOps
-- **Live ingestion UI** — real-time SSE progress per step with per-source controls
-- **Change detection** — MD5 hash manifest prevents re-processing unchanged content
+- **Live ingestion UI** — real-time SSE progress per step with per-source controls, repo picker, test plan/suite/test-case picker, and area path picker for Work Items
+- **Change detection** — MD5 hash manifest (`rag_hashes.json`) prevents re-processing unchanged content
 - **Crawl-or-reprocess toggle** — re-embed without a fresh crawl when only the chunking changed
+- **Markdown table rendering** — tabular content in answers is displayed as styled HTML tables (copy-paste friendly)
 
 ---
 
@@ -107,18 +117,25 @@ Open **http://localhost:8000**
 
 | Variable | Description | Default |
 |---|---|---|
-| `AZURE_DEVOPS_PAT` | PAT with Wiki·Code·Test Mgmt·Work Items (Read) | required |
+| `AZURE_DEVOPS_PAT` | PAT with Wiki · Code · Test Mgmt · Work Items (Read) | required |
 | `DEVOPS_ORG` | Azure DevOps organisation | required |
 | `DEVOPS_PROJECT` | Project name | required |
+| `AZURE_STORAGE_CONNECTION_STRING` | Blob Storage connection string | required |
+| `AZURE_STORAGE_CONTAINER` | Blob container for snapshots and manifest | `wiki-crawl` |
+| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI resource URL | required |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI API key | required |
+| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | Embedding model deployment name | `text-embedding-3-large` |
+| `AZURE_OPENAI_CHAT_DEPLOYMENT` | Chat model deployment name | `gpt-4o` |
 | `AZURE_SEARCH_ENDPOINT` | Azure AI Search endpoint | required |
-| `AZURE_OPENAI_ENDPOINT` | Azure OpenAI endpoint | required |
-| `CRAWL_WIKI` | Include Wiki in ingestion | `true` |
+| `AZURE_SEARCH_API_KEY` | Azure AI Search API key | required |
+| `AZURE_SEARCH_INDEX_NAME` | Search index name | `wiki-index` |
+| `CRAWL_WIKI` | Include Wiki pages in ingestion | `true` |
 | `CRAWL_CODE` | Include source code in ingestion | `true` |
-| `CRAWL_TESTS` | Include test plans in ingestion | `true` |
-| `AZURE_SEARCH_SEMANTIC_ENABLED` | Enable Semantic Reranker (S1+ required) | `true` |
-| `BOOST_SOURCE_TYPE` | Boost a source: `wiki` \| `code` \| `test` \| `` | `` |
-
-See [`.env.example`](.env.example) for the full list.
+| `CRAWL_TESTS` | Include test cases in ingestion | `true` |
+| `CRAWL_WORK_ITEMS` | Include Work Items in ingestion | `true` |
+| `CRAWL_COMMIT_DIFFS` | Include commit diffs in ingestion | `true` |
+| `CRAWL_WI_ATTACHMENTS` | Download and embed WI code/config attachments | `true` |
+| `EMBED_INTER_BATCH_DELAY_S` | Pause between embedding batches (rate-limit tuning) | `0.5` |
 
 ---
 
@@ -127,14 +144,25 @@ See [`.env.example`](.env.example) for the full list.
 | Route | Description |
 |---|---|
 | `/` | Landing page |
-| `/ingest` | Ingestion UI with live progress |
-| `/chat` | Chat interface |
+| `/ingest` | Ingestion UI with live progress, repo/plan/area pickers |
+| `/chat` | Chat interface with 5-source example questions |
 | `/about` | How Ingestion Works |
+| `/about/diffs` | How Commit Diff ingestion works |
 | `/chat/about` | How Chat Works (RAG pipeline) |
 | `/chat/about/scoring` | Scoring & Confidence deep-dive |
 | `/synergies` | Pipeline relationship diagram |
 | `/api/chat` | `POST {"question":"..."}` → `{"answer","sources","confidence"}` |
+| `/api/chat/stream` | SSE stream — per-step progress then final answer |
 | `/ingest/stream` | SSE stream of real-time ingestion progress |
+| `/api/repos` | List available Git repositories |
+| `/api/test-plans` | List all test plans |
+| `/api/test-suites` | List all suites across all plans |
+| `/api/areas` | Full area tree with depth info |
+| `/api/areas/counts` | Work item counts per type per area |
+| `/api/index/stats` | Document counts per source type in the search index |
+| `/api/debug/tc/{id}` | Diagnostic: indexed chunks + raw fields for a test case |
+| `/api/debug/wi/{id}` | Diagnostic: indexed chunks + ArtifactLink resolution for a WI |
+| `/api/debug/wi/{id}/dev-info` | Step-by-step trace of commit resolution for a WI |
 
 ---
 
@@ -143,9 +171,20 @@ See [`.env.example`](.env.example) for the full list.
 Your Azure DevOps PAT must have **all four** of these scopes:
 
 - ✅ **Wiki** — Read
-- ✅ **Code** — Read  
+- ✅ **Code** — Read
 - ✅ **Test Management** — Read
-- ✅ **Work Items** — Read *(separate from Test Management — required for fetching test case details)*
+- ✅ **Work Items** — Read *(required for test case details, Work Items, and commit link resolution)*
+
+---
+
+## Blob Storage Artefacts
+
+| Blob | Purpose |
+|---|---|
+| `rag_{ORG}_{PROJECT}.jsonl` | Raw crawl snapshot — used by `crawl=OFF` re-process mode |
+| `rag_hashes.json` | MD5 hash manifest — drives change detection between runs |
+
+> **First run after setup:** both blobs are absent. The full pipeline runs and creates them. Subsequent runs skip unchanged content. `crawl=OFF` mode requires the snapshot blob to exist.
 
 ---
 
@@ -155,9 +194,9 @@ Your Azure DevOps PAT must have **all four** of these scopes:
 |---|---|
 | Web framework | FastAPI + uvicorn |
 | Crawling | Azure DevOps REST API v7.1 |
-| Chunking | LangChain `RecursiveCharacterTextSplitter` |
-| Embeddings | Azure OpenAI `text-embedding-3-large` (3072 dims) |
+| Chunking | LangChain `RecursiveCharacterTextSplitter` (1000 chars, overlap 150) |
+| Embeddings | Azure OpenAI `text-embedding-3-large` (3072 dims, batches of 200, 3 workers) |
 | Search | Azure AI Search — HNSW vector + BM25 + RRF + Semantic Reranker |
 | Generation | Azure OpenAI `gpt-4o` (temp 0.2) |
 | Snapshot storage | Azure Blob Storage (JSONL + MD5 manifest) |
-| Frontend | Vanilla HTML/CSS/JS (no framework) |
+| Frontend | Vanilla HTML/CSS/JS — no framework |

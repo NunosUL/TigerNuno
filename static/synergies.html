@@ -26,6 +26,8 @@
       --teal-glow: rgba(57,197,207,0.12);
       --yellow: #e3b341;
       --yellow-glow: rgba(227,179,65,0.12);
+      --pink: #f778ba;
+      --pink-glow: rgba(247,120,186,0.1);
     }
 
     body {
@@ -41,7 +43,7 @@
 
     .back {
       align-self: flex-start;
-      margin-left: max(1rem, calc(50% - 500px));
+      margin-left: max(1rem, calc(50% - 520px));
       margin-bottom: 2.5rem;
       font-size: 0.85rem;
       color: var(--muted);
@@ -53,27 +55,28 @@
     }
     .back:hover { color: var(--accent); }
 
-    .page { width: 100%; max-width: 1000px; }
+    .page { width: 100%; max-width: 1040px; }
 
     /* ── Header ── */
-    .header { text-align: center; margin-bottom: 1rem; }
+    .header { text-align: center; margin-bottom: 1.5rem; }
     .header h1 {
       font-size: 2rem;
       font-weight: 700;
-      background: linear-gradient(135deg, #e6edf3 20%, var(--accent) 60%, var(--purple));
+      background: linear-gradient(135deg, #e6edf3 15%, var(--orange) 40%, var(--purple) 65%, var(--accent));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
       margin-bottom: 0.6rem;
     }
-    .header p { color: var(--muted); font-size: 0.95rem; line-height: 1.6; max-width: 600px; margin: 0 auto 2rem; }
+    .header p { color: var(--muted); font-size: 0.95rem; line-height: 1.6; max-width: 660px; margin: 0 auto 2rem; }
 
-    /* ── Pipeline tabs ── */
+    /* ── Pipeline LABELS ── */
     .pipeline-labels {
       display: flex;
       justify-content: center;
       gap: 1rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.75rem;
+      flex-wrap: wrap;
     }
     .pl-badge {
       padding: 0.35rem 1.2rem;
@@ -82,9 +85,10 @@
       font-weight: 600;
       border: 1px solid;
     }
-    .pl-badge.ingest  { border-color: var(--orange);  color: var(--orange);  background: var(--orange-glow); }
-    .pl-badge.shared  { border-color: var(--purple);  color: var(--purple);  background: var(--purple-glow); }
-    .pl-badge.chat    { border-color: var(--accent);  color: var(--accent);  background: var(--accent-glow); }
+    .pl-badge.ingest { border-color: var(--orange); color: var(--orange); background: var(--orange-glow); }
+    .pl-badge.shared { border-color: var(--purple); color: var(--purple); background: var(--purple-glow); }
+    .pl-badge.chat   { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+    .pl-badge.diffs  { border-color: var(--teal);   color: var(--teal);   background: var(--teal-glow); }
 
     /* ── Main diagram ── */
     .diagram-card {
@@ -95,16 +99,15 @@
       margin-bottom: 3rem;
       overflow-x: auto;
     }
-
     .diagram-svg {
       display: block;
       margin: 0 auto;
       width: 100%;
-      max-width: 940px;
-      min-width: 700px;
+      max-width: 1000px;
+      min-width: 760px;
     }
 
-    /* ── Synergy cards ── */
+    /* ── Synergy section ── */
     .section-label {
       font-size: 0.72rem;
       text-transform: uppercase;
@@ -136,14 +139,11 @@
     .syn-card.orange { border-top: 3px solid var(--orange); }
     .syn-card.teal   { border-top: 3px solid var(--teal); }
     .syn-card.yellow { border-top: 3px solid var(--yellow); }
-    .syn-card.pink   { border-top: 3px solid #f778ba; }
+    .syn-card.pink   { border-top: 3px solid var(--pink); }
+    .syn-card.red    { border-top: 3px solid #f85149; }
+    .syn-card.lime   { border-top: 3px solid #79c0ff; }
 
-    .syn-header {
-      display: flex;
-      align-items: center;
-      gap: 0.7rem;
-      margin-bottom: 0.75rem;
-    }
+    .syn-header { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.75rem; }
     .syn-icon {
       width: 34px; height: 34px;
       border-radius: 8px;
@@ -157,7 +157,9 @@
     .bg-orange { background: var(--orange-glow);  border: 1px solid var(--orange); }
     .bg-teal   { background: var(--teal-glow);    border: 1px solid var(--teal); }
     .bg-yellow { background: var(--yellow-glow);  border: 1px solid var(--yellow); }
-    .bg-pink   { background: rgba(247,120,186,0.1); border: 1px solid #f778ba; }
+    .bg-pink   { background: var(--pink-glow);    border: 1px solid var(--pink); }
+    .bg-red    { background: rgba(248,81,73,0.1); border: 1px solid #f85149; }
+    .bg-lime   { background: rgba(121,192,255,0.1); border: 1px solid #79c0ff; }
 
     .syn-title { font-size: 0.88rem; font-weight: 600; }
     .syn-desc  { font-size: 0.82rem; color: var(--muted); line-height: 1.65; }
@@ -176,6 +178,7 @@
     .pill-sm.orange { border-color: var(--orange);  color: var(--orange); }
     .pill-sm.teal   { border-color: var(--teal);    color: var(--teal); }
     .pill-sm.yellow { border-color: var(--yellow);  color: var(--yellow); }
+    .pill-sm.pink   { border-color: var(--pink);    color: var(--pink); }
 
     code {
       font-family: "SFMono-Regular", Consolas, monospace;
@@ -186,83 +189,49 @@
       padding: 0.1rem 0.38rem;
     }
 
-    /* ── Payload / data-flow section ── */
+    /* ── Data-flow section ── */
     .dataflow { margin-bottom: 3rem; }
-
-    .stage-flow {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-    .stage-row {
-      display: flex;
-      align-items: stretch;
-      gap: 1rem;
-      position: relative;
-    }
+    .stage-flow { display: flex; flex-direction: column; gap: 0; }
+    .stage-row { display: flex; align-items: stretch; gap: 1rem; position: relative; }
     .stage-connector {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 2.2rem;
-      flex-shrink: 0;
-      padding-top: 0.5rem;
+      display: flex; flex-direction: column; align-items: center;
+      width: 2.2rem; flex-shrink: 0; padding-top: 0.5rem;
     }
     .stage-dot {
-      width: 0.75rem;
-      height: 0.75rem;
-      border-radius: 50%;
-      border: 2px solid;
-      background: var(--bg);
-      flex-shrink: 0;
-      margin-top: 0.75rem;
+      width: 0.75rem; height: 0.75rem; border-radius: 50%;
+      border: 2px solid; background: var(--bg);
+      flex-shrink: 0; margin-top: 0.75rem;
     }
     .stage-line {
-      width: 2px;
-      flex: 1;
-      margin-top: 0.2rem;
-      margin-bottom: 0;
-      min-height: 1.5rem;
+      width: 2px; flex: 1; margin-top: 0.2rem;
+      margin-bottom: 0; min-height: 1.5rem;
     }
     .stage-block {
-      flex: 1;
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      margin-bottom: 0.6rem;
+      flex: 1; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border); margin-bottom: 0.6rem;
     }
     .stage-header {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      padding: 0.55rem 0.9rem;
-      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.55rem 0.9rem; border-bottom: 1px solid var(--border);
     }
-    .stage-header .sh-label {
-      font-size: 0.78rem;
-      font-weight: 600;
-    }
-    .stage-header .sh-sub {
-      font-size: 0.68rem;
-      color: var(--muted);
-      margin-left: auto;
-    }
+    .stage-header .sh-label { font-size: 0.78rem; font-weight: 600; }
+    .stage-header .sh-sub   { font-size: 0.68rem; color: var(--muted); margin-left: auto; }
     .stage-pre {
-      background: #080c10;
-      padding: 0.8rem 1rem;
-      margin: 0;
+      background: #080c10; padding: 0.8rem 1rem; margin: 0;
       overflow-x: auto;
       font-family: "SFMono-Regular", Consolas, monospace;
-      font-size: 0.71rem;
-      line-height: 1.65;
-      color: #cdd9e5;
+      font-size: 0.71rem; line-height: 1.65; color: #cdd9e5;
     }
 
-    /* stage colour variants */
     .stage-orange .stage-header { background: rgba(240,136,62,0.07); }
     .stage-orange .stage-dot    { border-color: var(--orange); }
-    .stage-orange .stage-line   { background: linear-gradient(var(--orange), var(--purple)); }
+    .stage-orange .stage-line   { background: linear-gradient(var(--orange), var(--teal)); }
     .stage-orange .sh-label     { color: var(--orange); }
+
+    .stage-teal .stage-header   { background: rgba(57,197,207,0.07); }
+    .stage-teal .stage-dot      { border-color: var(--teal); }
+    .stage-teal .stage-line     { background: linear-gradient(var(--teal), var(--purple)); }
+    .stage-teal .sh-label       { color: var(--teal); }
 
     .stage-purple .stage-header { background: rgba(163,113,247,0.07); }
     .stage-purple .stage-dot    { border-color: var(--purple); }
@@ -279,15 +248,8 @@
     .stage-green .stage-line    { background: linear-gradient(var(--success), var(--teal)); }
     .stage-green .sh-label      { color: var(--success); }
 
-    .stage-teal .stage-header   { background: rgba(57,197,207,0.07); }
-    .stage-teal .stage-dot      { border-color: var(--teal); }
-    .stage-teal .stage-line     { background: linear-gradient(var(--teal), var(--purple)); }
-    .stage-teal .sh-label       { color: var(--teal); }
-
     .stage-split {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.75rem;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
     }
     @media (max-width: 680px) { .stage-split { grid-template-columns: 1fr; } }
 
@@ -296,6 +258,8 @@
     .jn { color: #d2a8ff; }
     .jc { color: #6e7681; font-style: italic; }
     .jh { color: #ffa657; }
+    .diff-add { color: #3fb950; }
+    .diff-del { color: #f85149; }
 
     /* ── Key insight banner ── */
     .insight {
@@ -304,13 +268,25 @@
       border-radius: 12px;
       padding: 1.5rem 2rem;
       margin-bottom: 3rem;
-      display: flex;
-      gap: 1.25rem;
-      align-items: flex-start;
+      display: flex; gap: 1.25rem; align-items: flex-start;
     }
     .insight-icon { font-size: 1.8rem; flex-shrink: 0; }
     .insight-body h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.4rem; color: var(--accent); }
-    .insight-body p  { font-size: 0.85rem; color: var(--muted); line-height: 1.65; }
+    .insight-body p  { font-size: 0.85rem; color: var(--muted); line-height: 1.65; margin-bottom: 0.5rem; }
+    .insight-body p:last-child { margin-bottom: 0; }
+
+    /* ── New: source badge strip ── */
+    .source-badge-row {
+      display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem;
+      justify-content: center;
+    }
+    .src-badge {
+      padding: 0.3rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      font-weight: 600;
+      border: 1px solid;
+    }
   </style>
 </head>
 <body>
@@ -322,18 +298,28 @@
     <div class="header">
       <h1>Pipeline Synergies</h1>
       <p>The ingestion pipeline and the RAG chat are two separate processes — but every decision
-         made in ingestion was built to make chat work correctly. Here's how they connect.</p>
+         made in ingestion was built to make chat work correctly. Five sources, one shared index,
+         and a commit diff pipeline that closes the loop between backlog and code reality.</p>
     </div>
 
     <div class="pipeline-labels">
       <span class="pl-badge ingest">⚙ Ingestion</span>
+      <span class="pl-badge diffs">🔀 Commit Diffs</span>
       <span class="pl-badge shared">⬡ Shared Contract</span>
       <span class="pl-badge chat">💬 Chat / RAG</span>
     </div>
 
+    <div class="source-badge-row">
+      <span class="src-badge" style="border-color:#0078d4;color:#5ba0e8;background:rgba(0,120,212,0.08);">📄 Wiki Pages</span>
+      <span class="src-badge" style="border-color:#0078d4;color:#5ba0e8;background:rgba(0,120,212,0.08);">💻 Code Files</span>
+      <span class="src-badge" style="border-color:#0078d4;color:#5ba0e8;background:rgba(0,120,212,0.08);">🧪 Test Cases</span>
+      <span class="src-badge" style="border-color:var(--orange);color:var(--orange);background:var(--orange-glow);">📋 Work Items</span>
+      <span class="src-badge" style="border-color:var(--teal);color:var(--teal);background:var(--teal-glow);">🔀 Commit Diffs</span>
+    </div>
+
     <!-- ══════════ MAIN DIAGRAM ══════════ -->
     <div class="diagram-card">
-      <svg class="diagram-svg" viewBox="0 0 940 500" xmlns="http://www.w3.org/2000/svg" fill="none">
+      <svg class="diagram-svg" viewBox="0 0 1000 580" xmlns="http://www.w3.org/2000/svg" fill="none">
         <defs>
           <marker id="a0" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#444c56"/></marker>
           <marker id="a1" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#f0883e"/></marker>
@@ -341,8 +327,7 @@
           <marker id="a3" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#a371f7"/></marker>
           <marker id="a4" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#3fb950"/></marker>
           <marker id="a5" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#e3b341"/></marker>
-
-          <!-- synergy link glow -->
+          <marker id="a6" markerWidth="7" markerHeight="7" refX="5" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#39c5cf"/></marker>
           <filter id="fg" x="-40%" y="-40%" width="180%" height="180%">
             <feGaussianBlur stdDeviation="4" result="b"/>
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -350,167 +335,156 @@
         </defs>
 
         <!-- ── BACKGROUND COLUMNS ── -->
-        <!-- Ingestion column -->
-        <rect x="10" y="10" width="270" height="480" rx="12" fill="#1a1208" stroke="#f0883e" stroke-width="1" stroke-opacity="0.3"/>
-        <text x="145" y="32" text-anchor="middle" font-size="11" font-weight="700" fill="#f0883e" opacity="0.8">⚙  INGESTION</text>
+        <rect x="10" y="10" width="265" height="560" rx="12" fill="#1a1208" stroke="#f0883e" stroke-width="1" stroke-opacity="0.3"/>
+        <text x="142" y="30" text-anchor="middle" font-size="10" font-weight="700" fill="#f0883e" opacity="0.8">⚙  INGESTION</text>
 
-        <!-- Shared column -->
-        <rect x="295" y="10" width="350" height="480" rx="12" fill="#14101f" stroke="#a371f7" stroke-width="1" stroke-opacity="0.3"/>
-        <text x="470" y="32" text-anchor="middle" font-size="11" font-weight="700" fill="#a371f7" opacity="0.8">⬡  SHARED CONTRACT</text>
+        <rect x="288" y="10" width="415" height="560" rx="12" fill="#14101f" stroke="#a371f7" stroke-width="1" stroke-opacity="0.3"/>
+        <text x="495" y="30" text-anchor="middle" font-size="10" font-weight="700" fill="#a371f7" opacity="0.8">⬡  SHARED CONTRACT</text>
 
-        <!-- Chat column -->
-        <rect x="660" y="10" width="270" height="480" rx="12" fill="#0a1520" stroke="#2f81f7" stroke-width="1" stroke-opacity="0.3"/>
-        <text x="795" y="32" text-anchor="middle" font-size="11" font-weight="700" fill="#2f81f7" opacity="0.8">💬  CHAT / RAG</text>
+        <rect x="716" y="10" width="274" height="560" rx="12" fill="#0a1520" stroke="#2f81f7" stroke-width="1" stroke-opacity="0.3"/>
+        <text x="853" y="30" text-anchor="middle" font-size="10" font-weight="700" fill="#2f81f7" opacity="0.8">💬  CHAT / RAG</text>
 
-        <!-- ══════════════════════════════
-             ROW 1 — Wiki source
-        ══════════════════════════════ -->
-        <!-- Wiki pages -->
-        <rect x="30" y="50" width="230" height="50" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
-        <text x="80" y="70" font-size="18">📄</text>
-        <text x="100" y="68" font-size="10" font-weight="700" fill="#f0883e">crawler.py</text>
-        <text x="100" y="82" font-size="9" fill="#8b949e">Azure DevOps Wiki REST API</text>
-        <text x="100" y="93" font-size="9" fill="#8b949e">→ 296 pages as JSONL blob</text>
+        <!-- ══ ROW 1 — Sources (5 stacked source boxes) ══ -->
+        <rect x="28" y="48" width="228" height="120" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
+        <text x="142" y="67" text-anchor="middle" font-size="10" font-weight="600" fill="#f0883e">5 Azure DevOps Sources</text>
+        <text x="44" y="85"  font-size="9" fill="#5ba0e8">📄 Wiki Pages</text>
+        <text x="44" y="99"  font-size="9" fill="#5ba0e8">💻 Code Files</text>
+        <text x="44" y="113" font-size="9" fill="#5ba0e8">🧪 Test Cases</text>
+        <text x="44" y="127" font-size="9" fill="#f0883e">📋 Work Items  (Epics · Features · Stories · Tasks · Bugs)</text>
+        <text x="44" y="141" font-size="9" fill="#39c5cf">🔀 Commit Diffs  (auto-generated from ArtifactLink relations)</text>
+        <text x="142" y="160" text-anchor="middle" font-size="8" fill="#8b949e">PAT auth · per-type WIQL · paginated · parallel threads</text>
 
-        <!-- ══════════════════════════════
-             ROW 2 — Chunking / Blob
-        ══════════════════════════════ -->
-        <!-- Chunker -->
-        <rect x="30" y="130" width="230" height="50" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
-        <text x="80" y="150" font-size="18">✂️</text>
-        <text x="100" y="148" font-size="10" font-weight="700" fill="#f0883e">LangChain Splitter</text>
-        <text x="100" y="162" font-size="9" fill="#8b949e">1000 chars · 150 overlap</text>
-        <text x="100" y="173" font-size="9" fill="#8b949e">splits at headings first</text>
+        <!-- ══ ROW 2 — Chunker + Blob ══ -->
+        <rect x="28" y="200" width="228" height="50" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
+        <text x="80" y="220" font-size="16">✂️</text>
+        <text x="100" y="218" font-size="10" font-weight="700" fill="#f0883e">LangChain Splitter</text>
+        <text x="100" y="232" font-size="9" fill="#8b949e">1000 chars · 150 overlap · 8 workers</text>
+        <text x="100" y="243" font-size="9" fill="#8b949e">source_type + source_tags per chunk</text>
 
         <!-- Blob Storage (shared) -->
-        <rect x="315" y="60" width="310" height="50" rx="8" fill="#21262d" stroke="#a371f7" stroke-width="1.5"/>
-        <text x="365" y="80" font-size="18">🗄️</text>
-        <text x="390" y="78" font-size="10" font-weight="700" fill="#a371f7">Azure Blob Storage</text>
-        <text x="390" y="92" font-size="9" fill="#8b949e">latest .jsonl — shared source of truth</text>
-        <text x="390" y="103" font-size="9" fill="#8b949e">wiki_hashes.json — change manifest</text>
+        <rect x="308" y="60" width="375" height="55" rx="8" fill="#21262d" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="360" y="81" font-size="16">🗄️</text>
+        <text x="384" y="79" font-size="10" font-weight="700" fill="#a371f7">Azure Blob Storage</text>
+        <text x="384" y="93" font-size="9" fill="#8b949e">wiki_ORG_PROJECT.jsonl — crawl snapshot (5 source types)</text>
+        <text x="384" y="106" font-size="9" fill="#8b949e">wiki_hashes.json — MD5 change manifest</text>
 
-        <!-- arrows crawler → blob, blob → chunker -->
-        <line x1="260" y1="75" x2="315" y2="85" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
-        <line x1="315" y1="95" x2="260" y2="150" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#a3)"/>
+        <!-- arrows: crawl → blob, blob → chunk -->
+        <line x1="256" y1="105" x2="308" y2="90" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <line x1="308" y1="95" x2="256" y2="216" stroke="#a371f7" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#a3)"/>
 
-        <!-- ══════════════════════════════
-             ROW 3 — Embedding model (SYNERGY ①)
-        ══════════════════════════════ -->
-        <!-- Ingest embed -->
-        <rect x="30" y="220" width="230" height="55" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
-        <text x="80" y="241" font-size="18">⚡</text>
-        <text x="100" y="239" font-size="10" font-weight="700" fill="#f0883e">Embed Chunks</text>
-        <text x="100" y="253" font-size="9" fill="#8b949e">text-embedding-3-large</text>
-        <text x="100" y="265" font-size="9" fill="#8b949e">3072-dim vectors · batches of 100</text>
+        <!-- ══ ROW 3 — Embedding model (critical synergy) ══ -->
+        <rect x="28" y="285" width="228" height="55" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
+        <text x="80" y="305" font-size="16">⚡</text>
+        <text x="100" y="303" font-size="10" font-weight="700" fill="#f0883e">Embed Chunks</text>
+        <text x="100" y="317" font-size="9" fill="#8b949e">text-embedding-3-large · 3072 dims</text>
+        <text x="100" y="329" font-size="9" fill="#8b949e">batch 200 · 3 workers · 0.5 s delay</text>
 
-        <!-- Shared embedding model box -->
-        <rect x="315" y="200" width="310" height="80" rx="8" fill="#0d1f38" stroke="#2f81f7" stroke-width="2" filter="url(#fg)"/>
-        <text x="365" y="225" font-size="18">🔵</text>
-        <text x="390" y="222" font-size="10" font-weight="700" fill="#2f81f7">Azure OpenAI Embeddings</text>
-        <text x="390" y="237" font-size="9" fill="#8b949e">text-embedding-3-large — SAME MODEL</text>
-        <text x="390" y="251" font-size="9" fill="#2f81f7">⚠ Both sides MUST use identical model</text>
-        <text x="390" y="264" font-size="9" fill="#8b949e">so vectors live in the same space</text>
+        <rect x="308" y="180" width="375" height="90" rx="8" fill="#0d1f38" stroke="#2f81f7" stroke-width="2" filter="url(#fg)"/>
+        <text x="365" y="205" font-size="16">🔵</text>
+        <text x="390" y="202" font-size="10" font-weight="700" fill="#2f81f7">Azure OpenAI Embeddings</text>
+        <text x="390" y="217" font-size="9" fill="#8b949e">text-embedding-3-large — SAME MODEL on both sides</text>
+        <text x="390" y="232" font-size="9" fill="#2f81f7">⚠ Must be IDENTICAL to query-time embedding</text>
+        <text x="390" y="247" font-size="9" fill="#8b949e">Ingest: batch 200 · 3 workers — Chat: single query vector</text>
+        <text x="390" y="261" font-size="9" fill="#8b949e">Different models = vectors in different spaces = meaningless</text>
 
-        <!-- Chat embed -->
-        <rect x="680" y="220" width="230" height="55" rx="8" fill="#21262d" stroke="#2f81f7" stroke-width="1.5"/>
-        <text x="730" y="241" font-size="18">⚡</text>
-        <text x="750" y="239" font-size="10" font-weight="700" fill="#2f81f7">Embed Query</text>
-        <text x="750" y="253" font-size="9" fill="#8b949e">text-embedding-3-large</text>
-        <text x="750" y="265" font-size="9" fill="#8b949e">user question → 3072-dim vector</text>
+        <rect x="736" y="285" width="234" height="55" rx="8" fill="#21262d" stroke="#2f81f7" stroke-width="1.5"/>
+        <text x="786" y="305" font-size="16">⚡</text>
+        <text x="806" y="303" font-size="10" font-weight="700" fill="#2f81f7">Embed Query</text>
+        <text x="806" y="317" font-size="9" fill="#8b949e">same model · user question → 3072-dim vector</text>
+        <text x="806" y="329" font-size="9" fill="#8b949e">lives in same vector space as index</text>
 
-        <!-- arrows to/from shared embedding -->
-        <line x1="260" y1="247" x2="315" y2="247" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
-        <line x1="625" y1="247" x2="680" y2="247" stroke="#2f81f7" stroke-width="1.5" marker-end="url(#a2)"/>
+        <line x1="256" y1="312" x2="308" y2="230" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <line x1="683" y1="230" x2="736" y2="312" stroke="#2f81f7" stroke-width="1.5" marker-end="url(#a2)"/>
 
-        <!-- ══════════════════════════════
-             ROW 4 — Index (SYNERGY ②)
-        ══════════════════════════════ -->
-        <!-- Ingest upload -->
-        <rect x="30" y="320" width="230" height="55" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
-        <text x="80" y="341" font-size="18">📤</text>
-        <text x="100" y="339" font-size="10" font-weight="700" fill="#f0883e">Upload to Index</text>
-        <text x="100" y="353" font-size="9" fill="#8b949e">upsert by ID · batches of 100</text>
-        <text x="100" y="365" font-size="9" fill="#8b949e">stores: text, path, url, embedding</text>
+        <!-- ══ ROW 4 — Index (handoff) ══ -->
+        <rect x="28" y="375" width="228" height="55" rx="8" fill="#21262d" stroke="#f0883e" stroke-width="1.5"/>
+        <text x="80" y="395" font-size="16">📤</text>
+        <text x="100" y="393" font-size="10" font-weight="700" fill="#f0883e">Upload to Index</text>
+        <text x="100" y="407" font-size="9" fill="#8b949e">upsert by path-based ID · batch 200 · 4 workers</text>
+        <text x="100" y="419" font-size="9" fill="#8b949e">source_type · source_tags · text · embedding</text>
 
-        <!-- Shared index -->
-        <rect x="315" y="305" width="310" height="80" rx="8" fill="#0e1f16" stroke="#3fb950" stroke-width="2" filter="url(#fg)"/>
-        <text x="365" y="328" font-size="18">🟢</text>
-        <text x="390" y="326" font-size="10" font-weight="700" fill="#3fb950">Azure AI Search — wiki-index</text>
-        <text x="390" y="341" font-size="9" fill="#8b949e">id · text · path · url · embedding</text>
-        <text x="390" y="355" font-size="9" fill="#3fb950">⬡ The handoff point between pipelines</text>
-        <text x="390" y="369" font-size="9" fill="#8b949e">ingestion writes → chat reads</text>
+        <rect x="308" y="300" width="375" height="90" rx="8" fill="#0e1f16" stroke="#3fb950" stroke-width="2" filter="url(#fg)"/>
+        <text x="365" y="325" font-size="16">🟢</text>
+        <text x="390" y="323" font-size="10" font-weight="700" fill="#3fb950">Azure AI Search — wiki-index</text>
+        <text x="390" y="338" font-size="9" fill="#8b949e">id · text · path · url · source_type · source_tags · embedding</text>
+        <text x="390" y="353" font-size="9" fill="#3fb950">⬡ THE HANDOFF POINT — ingestion writes / chat reads</text>
+        <text x="390" y="368" font-size="9" fill="#8b949e">HNSW cosine · BM25 searchable · semantic reranker · source-boost</text>
+        <text x="390" y="383" font-size="9" fill="#8b949e">5 source types at path: /wiki/ /repos/ /test-cases/ /work-items/ /commit-diffs/</text>
 
-        <!-- Chat hybrid search -->
-        <rect x="680" y="320" width="230" height="55" rx="8" fill="#21262d" stroke="#2f81f7" stroke-width="1.5"/>
-        <text x="730" y="341" font-size="18">🔍</text>
-        <text x="750" y="339" font-size="10" font-weight="700" fill="#2f81f7">Hybrid Search</text>
-        <text x="750" y="353" font-size="9" fill="#8b949e">vector similarity + BM25 keywords</text>
-        <text x="750" y="365" font-size="9" fill="#8b949e">RRF fusion · returns top-K chunks</text>
+        <rect x="736" y="375" width="234" height="55" rx="8" fill="#21262d" stroke="#2f81f7" stroke-width="1.5"/>
+        <text x="786" y="395" font-size="16">🔍</text>
+        <text x="806" y="393" font-size="10" font-weight="700" fill="#2f81f7">Hybrid Search</text>
+        <text x="806" y="407" font-size="9" fill="#8b949e">vector + BM25 · RRF fusion · semantic reranker</text>
+        <text x="806" y="419" font-size="9" fill="#8b949e">returns top-K chunks with reranker_score</text>
 
-        <!-- arrows to/from shared index -->
-        <line x1="260" y1="347" x2="315" y2="347" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
-        <line x1="625" y1="347" x2="680" y2="347" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a4)"/>
+        <line x1="256" y1="402" x2="308" y2="355" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <line x1="683" y1="355" x2="736" y2="402" stroke="#3fb950" stroke-width="1.5" marker-end="url(#a4)"/>
 
-        <!-- ══════════════════════════════
-             ROW 5 — GPT-4o + Answer
-        ══════════════════════════════ -->
-        <!-- Hash manifest -->
-        <rect x="30" y="415" width="230" height="50" rx="8" fill="#21262d" stroke="#e3b341" stroke-width="1.5"/>
-        <text x="80" y="435" font-size="18">🔒</text>
-        <text x="100" y="433" font-size="10" font-weight="700" fill="#e3b341">Change Detection</text>
-        <text x="100" y="447" font-size="9" fill="#8b949e">MD5 hash per page · skip unchanged</text>
-        <text x="100" y="458" font-size="9" fill="#8b949e">saves embed tokens on re-runs</text>
+        <!-- ══ ROW 5 — Commit diff loop + GPT-4o ══ -->
+        <rect x="28" y="462" width="228" height="73" rx="8" fill="#21262d" stroke="#e3b341" stroke-width="1.5"/>
+        <text x="80" y="482" font-size="16">🔒</text>
+        <text x="100" y="480" font-size="10" font-weight="700" fill="#e3b341">Change Detection</text>
+        <text x="100" y="494" font-size="9" fill="#8b949e">MD5 per record · skip unchanged</text>
+        <text x="100" y="508" font-size="9" fill="#8b949e">all 5 source types in one manifest</text>
+        <text x="100" y="523" font-size="9" fill="#39c5cf">🔀 commit diffs: deduplicated by SHA</text>
 
-        <!-- GPT-4o + answer -->
-        <rect x="680" y="415" width="230" height="50" rx="8" fill="#21262d" stroke="#a371f7" stroke-width="1.5"/>
-        <text x="730" y="435" font-size="18">🧠</text>
-        <text x="750" y="433" font-size="10" font-weight="700" fill="#a371f7">GPT-4o + Citations</text>
-        <text x="750" y="447" font-size="9" fill="#8b949e">context from chunks · temp 0.2</text>
-        <text x="750" y="458" font-size="9" fill="#8b949e">path + url surfaced as citations</text>
+        <rect x="736" y="462" width="234" height="73" rx="8" fill="#21262d" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="786" y="482" font-size="16">🧠</text>
+        <text x="806" y="480" font-size="10" font-weight="700" fill="#a371f7">GPT-4o + Citations</text>
+        <text x="806" y="494" font-size="9" fill="#8b949e">context: WI + commit diffs + NuGet tables</text>
+        <text x="806" y="508" font-size="9" fill="#8b949e">path + url surfaced as citations</text>
+        <text x="806" y="523" font-size="9" fill="#a371f7">→ PFQ answers with real file names</text>
 
-        <!-- connector: chunker → embed ingest -->
-        <line x1="145" y1="180" x2="145" y2="220" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
-        <!-- connector: embed ingest → upload -->
-        <line x1="145" y1="275" x2="145" y2="320" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
-        <!-- connector: upload → hash -->
-        <line x1="145" y1="375" x2="145" y2="415" stroke="#e3b341" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#a5)"/>
-        <!-- connector: crawler → chunker -->
-        <line x1="145" y1="100" x2="145" y2="130" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <!-- arrows: embed→upload, upload→hash, embedChat→hybrid, hybrid→gpt4o -->
+        <line x1="142" y1="340" x2="142" y2="375" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <line x1="142" y1="430" x2="142" y2="462" stroke="#e3b341" stroke-width="1.5" stroke-dasharray="4 2" marker-end="url(#a5)"/>
+        <line x1="853" y1="340" x2="853" y2="375" stroke="#2f81f7" stroke-width="1.5" marker-end="url(#a2)"/>
+        <line x1="853" y1="430" x2="853" y2="462" stroke="#a371f7" stroke-width="1.5" marker-end="url(#a3)"/>
 
-        <!-- connector: embed chat → hybrid -->
-        <line x1="795" y1="275" x2="795" y2="320" stroke="#2f81f7" stroke-width="1.5" marker-end="url(#a2)"/>
-        <!-- connector: hybrid → gpt4o -->
-        <line x1="795" y1="375" x2="795" y2="415" stroke="#a371f7" stroke-width="1.5" marker-end="url(#a3)"/>
+        <!-- crawl → chunk -->
+        <line x1="142" y1="168" x2="142" y2="200" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
+        <!-- chunk → embed -->
+        <line x1="142" y1="250" x2="142" y2="285" stroke="#f0883e" stroke-width="1.5" marker-end="url(#a1)"/>
 
-        <!-- synergy connector: blob → chat embed (dashed) -->
-        <path d="M 470 110 Q 470 140 795 200" stroke="#a371f7" stroke-width="1" stroke-dasharray="5 3" fill="none" opacity="0.5"/>
+        <!-- COMMIT DIFF LOOP: sha marker in WI doc → retrieve diff → inject into context -->
+        <path d="M 853 465 Q 940 465 940 345 Q 940 220 683 220" stroke="#39c5cf" stroke-width="1.5" stroke-dasharray="5 3" fill="none" marker-end="url(#a6)" opacity="0.7"/>
+        <text x="948" y="345" font-size="8" fill="#39c5cf" transform="rotate(90,948,345)">sha→diff lookup</text>
 
         <!-- synergy number badges -->
-        <circle cx="287" cy="247" r="10" fill="#0d1117" stroke="#2f81f7" stroke-width="1.5"/>
-        <text x="287" y="251" text-anchor="middle" font-size="9" font-weight="700" fill="#2f81f7">①</text>
+        <circle cx="280" cy="312" r="10" fill="#0d1117" stroke="#2f81f7" stroke-width="1.5"/>
+        <text x="280" y="316" text-anchor="middle" font-size="9" font-weight="700" fill="#2f81f7">①</text>
 
-        <circle cx="287" cy="347" r="10" fill="#0d1117" stroke="#3fb950" stroke-width="1.5"/>
-        <text x="287" y="351" text-anchor="middle" font-size="9" font-weight="700" fill="#3fb950">②</text>
+        <circle cx="280" cy="402" r="10" fill="#0d1117" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="280" y="406" text-anchor="middle" font-size="9" font-weight="700" fill="#3fb950">②</text>
 
-        <circle cx="287" cy="130" r="10" fill="#0d1117" stroke="#a371f7" stroke-width="1.5"/>
-        <text x="287" y="134" text-anchor="middle" font-size="9" font-weight="700" fill="#a371f7">③</text>
+        <circle cx="280" cy="216" r="10" fill="#0d1117" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="280" y="220" text-anchor="middle" font-size="9" font-weight="700" fill="#a371f7">③</text>
+
+        <circle cx="280" cy="105" r="10" fill="#0d1117" stroke="#39c5cf" stroke-width="1.5"/>
+        <text x="280" y="109" text-anchor="middle" font-size="9" font-weight="700" fill="#39c5cf">⑧</text>
 
         <!-- legend -->
-        <rect x="315" y="420" width="310" height="55" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
-        <text x="470" y="440" text-anchor="middle" font-size="9" font-weight="700" fill="#8b949e">SYNERGY POINTS</text>
-        <circle cx="330" cy="455" r="5" fill="none" stroke="#2f81f7" stroke-width="1.5"/>
-        <text x="340" y="459" font-size="8" fill="#8b949e">① Same embedding model (critical)</text>
-        <circle cx="330" cy="468" r="5" fill="none" stroke="#3fb950" stroke-width="1.5"/>
-        <text x="340" y="472" font-size="8" fill="#8b949e">② Shared index — the handoff point</text>
-        <circle cx="490" cy="455" r="5" fill="none" stroke="#a371f7" stroke-width="1.5"/>
-        <text x="500" y="459" font-size="8" fill="#8b949e">③ Shared blob source</text>
-        <rect x="490" y="462" width="8" height="8" rx="1" fill="none" stroke="#e3b341" stroke-width="1" stroke-dasharray="2 1"/>
-        <text x="502" y="470" font-size="8" fill="#8b949e">metadata flows to citations</text>
+        <rect x="308" y="430" width="375" height="115" rx="8" fill="#21262d" stroke="#30363d" stroke-width="1"/>
+        <text x="495" y="450" text-anchor="middle" font-size="9" font-weight="700" fill="#8b949e">SYNERGY POINTS</text>
+        <circle cx="325" cy="465" r="5" fill="none" stroke="#2f81f7" stroke-width="1.5"/>
+        <text x="336" y="469" font-size="8" fill="#8b949e">① Same embedding model (critical — both sides)</text>
+        <circle cx="325" cy="479" r="5" fill="none" stroke="#3fb950" stroke-width="1.5"/>
+        <text x="336" y="483" font-size="8" fill="#8b949e">② Shared index — the handoff point</text>
+        <circle cx="325" cy="493" r="5" fill="none" stroke="#a371f7" stroke-width="1.5"/>
+        <text x="336" y="497" font-size="8" fill="#8b949e">③ Chunk size shapes context budget</text>
+
+        <circle cx="500" cy="465" r="5" fill="none" stroke="#e3b341" stroke-width="1.5"/>
+        <text x="511" y="469" font-size="8" fill="#8b949e">⑤ Metadata → source citations</text>
+        <circle cx="500" cy="479" r="5" fill="none" stroke="#39c5cf" stroke-width="1.5"/>
+        <text x="511" y="483" font-size="8" fill="#8b949e">⑧ 5 source types, 1 semantic index</text>
+        <rect x="500" y="490" width="8" height="8" rx="1" fill="none" stroke="#39c5cf" stroke-width="1" stroke-dasharray="2 1"/>
+        <text x="512" y="498" font-size="8" fill="#8b949e">🔀 sha markers → commit diff loop</text>
+        <text x="336" y="538" font-size="8" fill="#39c5cf">🔀 = Commit diff feedback loop — sha:sha in WI chunk → retrieve /commit-diffs/{sha} → inject into LLM context</text>
       </svg>
     </div>
 
     <!-- ── Synergy cards ── -->
-    <p class="section-label">The 7 synergies in detail</p>
+    <p class="section-label">The 9 synergies in detail</p>
     <div class="synergy-grid">
 
       <div class="syn-card blue">
@@ -518,7 +492,7 @@
           <div class="syn-icon bg-blue">⚡</div>
           <div class="syn-title">① Same Embedding Model</div>
         </div>
-        <p class="syn-desc">Both sides use <code>text-embedding-3-large</code>. This is the most critical constraint — vectors only make sense for similarity search if they were created in the same 3072-dimensional space. Different models = meaningless results.</p>
+        <p class="syn-desc">Both sides use <code>text-embedding-3-large</code>. This is the most critical constraint — vectors only make sense for similarity search if they were created in the same 3,072-dimensional space. Different models = meaningless results, silently.</p>
         <div class="pill-row">
           <span class="pill-sm blue">text-embedding-3-large</span>
           <span class="pill-sm blue">3072 dims</span>
@@ -531,10 +505,10 @@
           <div class="syn-icon bg-green">⬡</div>
           <div class="syn-title">② Shared Index — the Handoff Point</div>
         </div>
-        <p class="syn-desc">Azure AI Search's <code>wiki-index</code> is the single point where ingestion ends and chat begins. Ingestion writes; chat reads. The index schema was designed to serve both — upsert by ID for ingestion, hybrid search fields for chat.</p>
+        <p class="syn-desc">Azure AI Search's <code>wiki-index</code> is where ingestion ends and chat begins. Ingestion writes; chat reads. The index schema — including <code>source_type</code>, <code>source_tags</code>, and the scoring profile — was designed to serve both pipelines.</p>
         <div class="pill-row">
           <span class="pill-sm green">wiki-index</span>
-          <span class="pill-sm green">upsert</span>
+          <span class="pill-sm green">upsert by id</span>
           <span class="pill-sm">hybrid search</span>
         </div>
       </div>
@@ -544,11 +518,11 @@
           <div class="syn-icon bg-orange">✂️</div>
           <div class="syn-title">③ Chunk Size Shapes Answer Quality</div>
         </div>
-        <p class="syn-desc">The 1000-char / 150-overlap split was chosen so 8–10 chunks fit in GPT-4o's 12,000-char context budget while staying semantically meaningful. Too large = fewer sources. Too small = loss of context at boundaries.</p>
+        <p class="syn-desc">The 1,000-char / 150-overlap split was chosen so 8–10 chunks fit in GPT-4o's 16,000-char context budget while remaining semantically complete. Commit diff chunks are often larger but capped to keep the budget balanced.</p>
         <div class="pill-row">
           <span class="pill-sm orange">1000 chars</span>
           <span class="pill-sm orange">150 overlap</span>
-          <span class="pill-sm">12k budget</span>
+          <span class="pill-sm">16k budget</span>
         </div>
       </div>
 
@@ -557,11 +531,11 @@
           <div class="syn-icon bg-purple">🔑</div>
           <div class="syn-title">④ Deterministic IDs Enable Clean Upserts</div>
         </div>
-        <p class="syn-desc">Chunk IDs are built from the page path + chunk index. This means re-running ingestion overwrites exactly the right vectors — never creating duplicates. The chat always queries a clean, current index with no stale data.</p>
+        <p class="syn-desc">Chunk IDs are built deterministically from path + chunk index. Re-running ingestion overwrites exactly the right vectors — never creating duplicates. Commit diff IDs use the 40-char SHA, guaranteeing uniqueness across all work items.</p>
         <div class="pill-row">
           <span class="pill-sm purple">path-based ID</span>
-          <span class="pill-sm purple">no duplicates</span>
-          <span class="pill-sm">always current</span>
+          <span class="pill-sm purple">SHA-based diff ID</span>
+          <span class="pill-sm">no duplicates</span>
         </div>
       </div>
 
@@ -570,7 +544,7 @@
           <div class="syn-icon bg-teal">📄</div>
           <div class="syn-title">⑤ Metadata Becomes Citations</div>
         </div>
-        <p class="syn-desc"><code>path</code> and <code>url</code> are stored at ingestion alongside every chunk. At query time, these are retrieved with the chunks and surfaced in the chat UI as clickable source citations — providing traceability back to the original wiki page.</p>
+        <p class="syn-desc"><code>path</code> and <code>url</code> stored at ingestion are retrieved alongside every chunk at query time and surfaced as clickable source citations. Commit diff chunks cite back to the Azure DevOps commit page via <code>remote_url</code>.</p>
         <div class="pill-row">
           <span class="pill-sm teal">path</span>
           <span class="pill-sm teal">url</span>
@@ -583,11 +557,11 @@
           <div class="syn-icon bg-yellow">🔒</div>
           <div class="syn-title">⑥ Change Detection Keeps Index Fresh</div>
         </div>
-        <p class="syn-desc">The MD5 hash manifest means only changed pages get re-embedded. The chat always gets fresh content after a wiki update, without a costly full re-index. If ingestion fails mid-run, the manifest isn't saved — so the next run retries safely.</p>
+        <p class="syn-desc">The MD5 hash manifest means only changed records get re-embedded. Commit diff records are immutable (same SHA = same diff) so once ingested they are never re-processed. If upload fails, the manifest is not saved — next run retries safely.</p>
         <div class="pill-row">
-          <span class="pill-sm yellow">MD5 per page</span>
+          <span class="pill-sm yellow">MD5 per record</span>
           <span class="pill-sm yellow">skip unchanged</span>
-          <span class="pill-sm">safe retries</span>
+          <span class="pill-sm">SHA immutability</span>
         </div>
       </div>
 
@@ -596,11 +570,37 @@
           <div class="syn-icon bg-pink">🔍</div>
           <div class="syn-title">⑦ Text Field Enables Hybrid Search</div>
         </div>
-        <p class="syn-desc">The <code>text</code> field stored at ingestion is marked <code>searchable</code> in the index schema, enabling Azure AI Search's BM25 full-text engine alongside vector search. The LangChain splitter preserves natural sentences, making keyword matching effective.</p>
+        <p class="syn-desc">The <code>text</code> field stored at ingestion is marked <code>searchable</code>, enabling BM25 full-text search alongside vector search. Commit diff chunks contain real keywords (file names, package names, function signatures) that BM25 excels at matching.</p>
         <div class="pill-row">
           <span class="pill-sm">BM25 keywords</span>
           <span class="pill-sm">vector similarity</span>
           <span class="pill-sm">RRF fusion</span>
+        </div>
+      </div>
+
+      <div class="syn-card lime">
+        <div class="syn-header">
+          <div class="syn-icon bg-lime">📋</div>
+          <div class="syn-title">⑧ Work Items as Structured Context</div>
+        </div>
+        <p class="syn-desc">Work Items add a dimension that Wiki and Code can't provide: <em>intent</em>. A User Story provides acceptance criteria; a Bug has repro steps; an Epic defines the business goal. The LLM uses this to answer "why was this change made?" — not just "what changed".</p>
+        <div class="pill-row">
+          <span class="pill-sm">acceptance criteria</span>
+          <span class="pill-sm">area path</span>
+          <span class="pill-sm">linked WIs</span>
+        </div>
+      </div>
+
+      <div class="syn-card red">
+        <div class="syn-header">
+          <div class="syn-icon bg-red">🔀</div>
+          <div class="syn-title">⑨ Commit Diffs Close the Code Evidence Loop</div>
+        </div>
+        <p class="syn-desc">Work Item chunks contain <code>*sha:40-char-hex*</code> markers. At query time, <code>query.py</code> scans retrieved chunks for these markers and fetches the corresponding <code>/commit-diffs/{sha}</code> documents, injecting actual before/after file diffs into the context. This is what enables questions related to filling a PFQ document to return real answers like <em>"TargetFramework: net8.0 → net10.0"</em>.</p>
+        <div class="pill-row">
+          <span class="pill-sm pink">sha markers</span>
+          <span class="pill-sm pink">diff lookup</span>
+          <span class="pill-sm pink">PFQ precision</span>
         </div>
       </div>
 
@@ -611,30 +611,50 @@
     <div class="dataflow">
       <div class="stage-flow">
 
-        <!-- Stage 1: Crawler output (JSONL page record) -->
+        <!-- Stage 1: Crawler output (Work Item) -->
         <div class="stage-row">
           <div class="stage-connector">
             <div class="stage-dot" style="border-color:var(--orange)"></div>
-            <div class="stage-line" style="background:linear-gradient(var(--orange),var(--purple))"></div>
+            <div class="stage-line" style="background:linear-gradient(var(--orange),var(--teal))"></div>
           </div>
           <div class="stage-block stage-orange">
             <div class="stage-header">
-              <span>📄</span>
-              <span class="sh-label">① Page Record</span>
-              <span class="sh-sub">crawler.py → blob storage · one JSON object per wiki page</span>
+              <span>📋</span>
+              <span class="sh-label">① Work Item Record</span>
+              <span class="sh-sub">crawler.py → blob storage · /work-items/{id}</span>
             </div>
             <pre class="stage-pre">{
-  <span class="jk">"path"</span>:       <span class="js">"/Documentation/Setup"</span>,
-  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
-  <span class="jk">"markdown"</span>:   <span class="js">"# Setup Guide\n\nTo install the project, run `npm install` from\nthe root directory. Ensure Node.js 18+ is installed first.\n\n## Prerequisites\n\n- Node.js 18+\n- Azure CLI\n- Docker Desktop..."</span>,
-  <span class="jk">"html"</span>:       <span class="js">"&lt;h1&gt;Setup Guide&lt;/h1&gt;&lt;p&gt;To install the project...&lt;/p&gt;"</span>,
-  <span class="jk">"links"</span>:      [<span class="js">"/Documentation/Prerequisites"</span>, <span class="js">"/Guides/Deploy"</span>],
-  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
-}</pre>
+  <span class="jk">"path"</span>:       <span class="js">"/work-items/301701"</span>,
+  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/ulpsi/NetProjects10/_workitems/edit/301701"</span>,
+  <span class="jk">"markdown"</span>:   <span class="js">"# User Story: Marketplace Client Support\n\n**ID:** 301701 | **State:** Active\n**Area Path:** WERCSmart\\Marketplace\n\n## Description\nAs a marketplace client...\n\n## Git Commits\n\n### **a1b2c3d** — \"Upgrade packages to .NET 10\"\n*sha:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2*\n| edit | /WERCSmart.DataAccess/UL.Wercsmart.DataAccess.csproj |\n| edit | /WERCSmart.RetailEvents/UL.Wercsmart.RetailEvents.csproj |"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-26T14:22:10Z"</span>
+}
+<span class="jc">// The *sha:…* markers in the markdown are foreign keys → /commit-diffs/{sha}</span></pre>
           </div>
         </div>
 
-        <!-- Stage 2: After chunking (pre-embed) -->
+        <!-- Stage 2: Commit diff record -->
+        <div class="stage-row">
+          <div class="stage-connector">
+            <div class="stage-dot" style="border-color:var(--teal)"></div>
+            <div class="stage-line" style="background:linear-gradient(var(--teal),var(--purple))"></div>
+          </div>
+          <div class="stage-block stage-teal">
+            <div class="stage-header">
+              <span>🔀</span>
+              <span class="sh-label">② Commit Diff Record</span>
+              <span class="sh-sub">generated during Work Items crawl · /commit-diffs/{sha}</span>
+            </div>
+            <pre class="stage-pre">{
+  <span class="jk">"path"</span>:     <span class="js">"/commit-diffs/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"</span>,
+  <span class="jk">"markdown"</span>: <span class="js">"# Commit a1b2c3d\n*sha:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2*\n**Message:** Upgrade packages to .NET 10\n\n## Changed Files\n\n### `/WERCSmart.DataAccess/UL.Wercsmart.DataAccess.csproj` — edit\n\n**NuGet package changes:**\n| Package | Before | After |\n|---------|--------|-------|\n| TargetFramework | `net8.0` | `net10.0` |\n\n```diff\n-  &lt;TargetFramework&gt;net8.0&lt;/TargetFramework&gt;\n+  &lt;TargetFramework&gt;net10.0&lt;/TargetFramework&gt;\n```"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-26T14:22:10Z"</span>
+}
+<span class="jc">// immutable: diff between commitSHA ↔ parentSHA via Python difflib — identical on every re-run</span></pre>
+          </div>
+        </div>
+
+        <!-- Stage 3: After chunking -->
         <div class="stage-row">
           <div class="stage-connector">
             <div class="stage-dot" style="border-color:var(--purple)"></div>
@@ -643,26 +663,21 @@
           <div class="stage-block stage-purple">
             <div class="stage-header">
               <span>✂️</span>
-              <span class="sh-label">② Chunk (pre-embedding)</span>
+              <span class="sh-label">③ Chunk (pre-embedding)</span>
               <span class="sh-sub">LangChain RecursiveCharacterTextSplitter · 1000 chars / 150 overlap</span>
             </div>
             <pre class="stage-pre">{
-  <span class="jk">"id"</span>:         <span class="jh">"documentation_setup__0"</span>,  <span class="jc">// deterministic: "{safe_path}__{chunk_index}"</span>
-  <span class="jk">"text"</span>:       <span class="js">"# Setup Guide\n\nTo install the project, run `npm install` from\nthe root directory. Ensure Node.js 18+ is installed first.\n\n## Prerequisites\n\n- Node.js 18+\n- Azure CLI\n- Docker Desktop..."</span>,
-  <span class="jk">"path"</span>:       <span class="js">"/Documentation/Setup"</span>,
-  <span class="jk">"url"</span>:        <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
-  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
-  <span class="jc">// no "embedding" field yet — added by step 3</span>
-}
-
-<span class="jc">// a 3000-char page might produce 3–4 overlapping chunks like this:
-//   documentation_setup__0   chars   0–1000
-//   documentation_setup__1   chars 850–1850   ← 150-char overlap with __0
-//   documentation_setup__2   chars 1700–2700  ← 150-char overlap with __1</span></pre>
+  <span class="jk">"id"</span>:          <span class="jh">"commit_diffs_a1b2c3d4e5f6__0"</span>,    <span class="jc">// deterministic</span>
+  <span class="jk">"text"</span>:        <span class="js">"# Commit a1b2c3d\n*sha:a1b2c3d4...*\n**Message:** Upgrade packages to .NET 10\n\n## Changed Files\n..."</span>,
+  <span class="jk">"path"</span>:        <span class="js">"/commit-diffs/a1b2c3d4e5f6..."</span>,
+  <span class="jk">"source_type"</span>: <span class="js">"commit-diff"</span>,
+  <span class="jk">"source_tags"</span>: [<span class="js">"commit-diff"</span>]
+  <span class="jc">// no "embedding" yet</span>
+}</pre>
           </div>
         </div>
 
-        <!-- Stage 3: After embedding (full chunk doc) -->
+        <!-- Stage 4: Embedded + indexed -->
         <div class="stage-row">
           <div class="stage-connector">
             <div class="stage-dot" style="border-color:var(--accent)"></div>
@@ -671,92 +686,54 @@
           <div class="stage-block stage-blue">
             <div class="stage-header">
               <span>⚡</span>
-              <span class="sh-label">③ Embedded Chunk</span>
-              <span class="sh-sub">Azure OpenAI · text-embedding-3-large · 3072 dimensions</span>
+              <span class="sh-label">④ Embedded Chunk in Azure AI Search</span>
+              <span class="sh-sub">text-embedding-3-large · 3072 dims · upserted by id</span>
             </div>
             <pre class="stage-pre">{
-  <span class="jk">"id"</span>:         <span class="js">"documentation_setup__0"</span>,
-  <span class="jk">"text"</span>:       <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`..."</span>,
-  <span class="jk">"path"</span>:       <span class="js">"/Documentation/Setup"</span>,
-  <span class="jk">"url"</span>:        <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
-  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>,
-  <span class="jk">"embedding"</span>:  [
-    <span class="jn"> 0.0234</span>, <span class="jn">-0.0891</span>, <span class="jn"> 0.1102</span>, <span class="jn">-0.0338</span>, <span class="jn"> 0.0567</span>, <span class="jn">-0.1245</span>, <span class="jn"> 0.0789</span>, <span class="jn"> 0.0423</span>,
-    <span class="jn">-0.0156</span>, <span class="jn"> 0.0912</span>, <span class="jn">-0.0674</span>, <span class="jn"> 0.1389</span>, <span class="jn">-0.0217</span>, <span class="jn"> 0.0834</span>, <span class="jn">-0.0501</span>, <span class="jn"> 0.0278</span>,
-    <span class="jc">... 3,056 more float32 values — each chunk produces ~12 KB of vector data ...</span>
-  ]
+  <span class="jk">"id"</span>:          <span class="js">"commit_diffs_a1b2c3d4e5f6__0"</span>,
+  <span class="jk">"text"</span>:        <span class="js">"# Commit a1b2c3d\n*sha:...*\n**Message:** Upgrade packages..."</span>,
+  <span class="jk">"path"</span>:        <span class="js">"/commit-diffs/a1b2c3d4e5f6..."</span>,
+  <span class="jk">"source_type"</span>: <span class="js">"commit-diff"</span>,
+  <span class="jk">"source_tags"</span>: [<span class="js">"commit-diff"</span>],
+  <span class="jk">"embedding"</span>:   [<span class="jn"> 0.0234</span>, <span class="jn">-0.0891</span>, <span class="jn"> 0.1102</span>, <span class="jc">... 3069 more ...</span>]
 }
-
-<span class="jc">// this document is now ready to upsert into Azure AI Search
-// batched: 100 chunks per API call  ·  296 pages → ~800–1200 total chunks</span></pre>
+<span class="jc">// upsert: 201 if new, 200 if updated — re-run safe because SHA id is immutable</span></pre>
           </div>
         </div>
 
-        <!-- Stage 4: Search result (query-time retrieval) -->
+        <!-- Stage 5: Query time -->
         <div class="stage-row">
           <div class="stage-connector">
             <div class="stage-dot" style="border-color:var(--success)"></div>
-            <div class="stage-line" style="background:linear-gradient(var(--success),var(--teal))"></div>
-          </div>
-          <div class="stage-block stage-green">
-            <div class="stage-header">
-              <span>🔍</span>
-              <span class="sh-label">④ Hybrid Search Result</span>
-              <span class="sh-sub">Azure AI Search · vector similarity + BM25 · RRF fusion · top-8 chunks</span>
-            </div>
-            <pre class="stage-pre"><span class="jc">// query: "How do I set up the project?"
-// query vector: [0.0198, -0.0743, 0.0934, ...] (same model, same space as stored embeddings)</span>
-
-{
-  <span class="jk">"id"</span>:                      <span class="js">"documentation_setup__0"</span>,
-  <span class="jk">"text"</span>:                    <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`..."</span>,
-  <span class="jk">"path"</span>:                    <span class="js">"/Documentation/Setup"</span>,
-  <span class="jk">"url"</span>:                     <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
-  <span class="jk">"crawled_at"</span>:              <span class="js">"2026-04-08T00:24:38Z"</span>,
-  <span class="jk">"@search.score"</span>:           <span class="jn">0.03482</span>,   <span class="jc">// RRF-fused score (vector + BM25 combined)</span>
-  <span class="jk">"@search.reranker_score"</span>:  <span class="jn">2.847</span>     <span class="jc">// semantic reranker score (if enabled)</span>
-}
-<span class="jc">// up to 8 chunks returned  ·  concatenated into ~12,000 chars of GPT-4o context
-// "embedding" field NOT returned — only text + metadata needed at query time</span></pre>
-          </div>
-        </div>
-
-        <!-- Stage 5: Chat request + response -->
-        <div class="stage-row">
-          <div class="stage-connector">
-            <div class="stage-dot" style="border-color:var(--teal)"></div>
           </div>
           <div style="flex:1; display:flex; flex-direction:column; gap:0.75rem; margin-bottom:0.6rem;">
             <div class="stage-split">
-              <div class="stage-block stage-teal">
+              <div class="stage-block stage-green">
                 <div class="stage-header">
                   <span>💬</span>
                   <span class="sh-label">⑤ Chat Request</span>
                   <span class="sh-sub">POST /api/chat</span>
                 </div>
                 <pre class="stage-pre">{
-  <span class="jk">"question"</span>: <span class="js">"How do I set up the project?"</span>
-}</pre>
+  <span class="jk">"question"</span>: <span class="js">"PFQ for User Story 301701 — what packages changed?"</span>
+}
+<span class="jc">// query.py embeds the question, runs hybrid search,
+// finds WI chunk with *sha:a1b2c3d4...*,
+// retrieves /commit-diffs/{sha}, injects diffs</span></pre>
               </div>
-              <div class="stage-block stage-teal">
+              <div class="stage-block stage-green">
                 <div class="stage-header">
                   <span>🧠</span>
                   <span class="sh-label">⑤ Chat Response</span>
-                  <span class="sh-sub">GPT-4o · temp 0.2 · grounded in retrieved chunks</span>
+                  <span class="sh-sub">GPT-4o · grounded in WI + commit diffs</span>
                 </div>
                 <pre class="stage-pre">{
-  <span class="jk">"answer"</span>: <span class="js">"To set up the project, run `npm install`\nfrom the root directory. You will need Node.js\n18+ and Docker Desktop installed first. See the\nPrerequisites section for the full list of\nrequired tools before running any commands."</span>,
+  <span class="jk">"answer"</span>: <span class="js">"#### 8.1 Third-Party Packages\n\nPackages changed:\n- TargetFramework: `net8.0` → `net10.0`\n- Microsoft.Extensions.Hosting: `9.0.9` → `10.0.0`\n- Microsoft.Extensions.DependencyInjection: `9.0.9` → `10.0.0`\n\nFiles: WERCSmart.DataAccess.csproj, WERCSmart.RetailEvents.csproj"</span>,
   <span class="jk">"sources"</span>: [
-    {
-      <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
-      <span class="jk">"url"</span>:  <span class="js">"https://dev.azure.com/.../5/Setup"</span>
-    },
-    {
-      <span class="jk">"path"</span>: <span class="js">"/Documentation/Prerequisites"</span>,
-      <span class="jk">"url"</span>:  <span class="js">"https://dev.azure.com/.../3/Prerequisites"</span>
-    }
+    { <span class="jk">"path"</span>: <span class="js">"/work-items/301701"</span> },
+    { <span class="jk">"path"</span>: <span class="js">"/commit-diffs/a1b2c3d4..."</span> }
   ],
-  <span class="jk">"confidence"</span>: <span class="js">"high"</span>  <span class="jc">// "high" | "medium" | "low"</span>
+  <span class="jk">"confidence"</span>: <span class="js">"high"</span>
 }</pre>
               </div>
             </div>
@@ -771,11 +748,14 @@
       <div class="insight-icon">💡</div>
       <div class="insight-body">
         <h3>The key insight</h3>
-        <p>The ingestion pipeline and the RAG chat are <strong>decoupled in time</strong> — ingestion
-           runs on demand when the wiki changes, chat runs on every user question — but they are
-           <strong>tightly coupled in contract</strong>: same embedding model, same index schema,
-           same metadata fields. Change any one of those and both sides break. This is why
-           the two pipelines live in the same repository and share the same <code>.env</code> configuration.</p>
+        <p>The ingestion pipeline and RAG chat are <strong>decoupled in time</strong> — ingestion runs
+           on demand, chat runs on every question — but <strong>tightly coupled in contract</strong>:
+           same embedding model, same index schema, same metadata fields. Change any one and both sides break.</p>
+        <p>The commit diff pipeline adds a second contract: the <code>*sha:…*</code> markers in Work Item
+           Markdown are a typed foreign key into <code>/commit-diffs/{sha}</code>. This makes the query
+           pipeline a two-hop retrieval system — Work Item chunk → SHA marker → diff chunk — without
+           any explicit join logic in the LLM. The LLM simply receives a complete context bundle and
+           answers as if it had read the code change itself.</p>
       </div>
     </div>
 

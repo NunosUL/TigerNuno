@@ -1,3 +1,11 @@
 .env
 __pycache__/
 *.pyc
+
+# Temporary files (Claude Code scratch files, OS artifacts)
+tmpclaude*
+*.tmp
+~$*
+
+# Windows reserved device names (created accidentally by shell redirects)
+nul

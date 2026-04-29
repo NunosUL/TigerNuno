@@ -185,6 +185,15 @@
       border-bottom: 1px solid var(--border);
       letter-spacing: 0.5px;
       text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .log-timer {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.78rem;
+      color: var(--accent);
+      letter-spacing: 0.5px;
     }
     .log {
       padding: 0.75rem 1rem;
@@ -192,7 +201,7 @@
       font-size: 0.8rem;
       color: var(--muted);
       min-height: 80px;
-      max-height: 180px;
+      max-height: 360px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
@@ -255,6 +264,7 @@
       word-break: break-all;
     }
     .blob-name span { color: var(--text); }
+    #fileFooter { margin-top: 0.5rem; }
 
     /* ── Pipeline Settings ── */
     .settings {
@@ -461,17 +471,47 @@
       margin-bottom: 0.5rem;
     }
 
-    /* ── Clear manifest button ── */
-    .manifest-row {
-      margin-top: 0.9rem;
-      padding-top: 0.9rem;
-      border-top: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
+    /* ── Maintenance card ── */
+    .maintenance-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem 2rem;
+      width: 100%;
+      max-width: 700px;
+      margin-bottom: 1.25rem;
     }
-    .manifest-row.hidden { display: none; }
+    .maintenance-card h4 {
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--warning);
+      margin-bottom: 1rem;
+    }
+    .maintenance-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1.25rem;
+    }
+    .maintenance-row + .maintenance-row {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .maintenance-info { flex: 1; min-width: 0; }
+    .maintenance-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.3rem;
+    }
+    .maintenance-desc {
+      font-size: 0.75rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
     .manifest-btn {
       display: inline-flex;
       align-items: center;
@@ -487,6 +527,7 @@
       transition: all 0.18s;
       white-space: nowrap;
       flex-shrink: 0;
+      margin-top: 0.15rem;
     }
     .manifest-btn:hover:not(:disabled) {
       border-color: var(--error);
@@ -496,11 +537,127 @@
     .manifest-btn:disabled { opacity: 0.45; cursor: not-allowed; }
     .manifest-status {
       font-size: 0.72rem;
-      margin-top: 0.3rem;
+      margin-top: 0.35rem;
       min-height: 1rem;
     }
     .manifest-status.ok  { color: var(--success); }
     .manifest-status.err { color: var(--error); }
+    /* legacy — keep hidden class so no JS errors if anything still references it */
+    .manifest-row.hidden { display: none; }
+
+    /* Area treeview */
+    .area-tree {
+      max-height: 240px;
+      overflow-y: auto;
+      margin-top: 0.25rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+    .area-tree-node { display: block; }
+    .area-node {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.28rem 0.5rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.12s;
+      user-select: none;
+    }
+    .area-node:hover { background: var(--surface2); }
+    .area-chevron {
+      font-size: 0.55rem;
+      color: var(--muted);
+      width: 12px;
+      text-align: center;
+      flex-shrink: 0;
+      transition: transform 0.15s;
+      cursor: pointer;
+      padding: 2px;
+    }
+    .area-chevron.open { transform: rotate(90deg); }
+    .area-chevron-empty { width: 12px; flex-shrink: 0; }
+    .area-checkbox {
+      width: 13px; height: 13px;
+      border-radius: 3px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8px;
+      color: transparent;
+      transition: all 0.12s;
+    }
+    .area-node.checked .area-checkbox {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+    .area-node-name {
+      font-size: 0.78rem;
+      color: var(--muted);
+      transition: color 0.12s;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .area-node.checked .area-node-name { color: var(--text); }
+    .area-children { padding-left: 1.1rem; }
+    .area-children.collapsed { display: none; }
+    .area-node.hidden-filter { display: none; }
+    .area-tree-node.hidden-filter { display: none; }
+
+    /* ── Area counts summary ── */
+    .area-counts {
+      margin-top: 0.65rem;
+      padding: 0.7rem 0.85rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: none;
+    }
+    .area-counts.visible { display: block; }
+    .area-counts-header {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 0.55rem;
+    }
+    .area-counts-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .area-count-chip {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      transition: border-color 0.15s;
+    }
+    .area-count-chip.has-items {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .area-count-chip .chip-count {
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .area-count-chip.loading { opacity: 0.55; }
+    .area-counts-total {
+      margin-top: 0.45rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+    }
+    .area-counts-total strong { color: var(--text); }
 
     /* Toggle switch */
     .toggle {
@@ -578,7 +735,7 @@
 
   <div class="header">
     <h1>Ingestion Pipeline</h1>
-    <p>Wiki · Source Code · Test Plans &nbsp;→&nbsp; Crawl · Chunk · Embed · Index · Upload</p>
+    <p>Wiki · Code · Tests · Work Items · Commit Diffs &nbsp;→&nbsp; Crawl · Chunk · Embed · Index · Upload</p>
     <div style="display:flex;gap:1.25rem;justify-content:center;margin-top:0.6rem;">
       <a href="/" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">← Home</a>
       <a href="/chat" style="font-size:0.82rem;color:var(--muted);text-decoration:none;transition:color 0.2s;" onmouseover="this.style.color='var(--accent)'" onmouseout="this.style.color='var(--muted)'">💬 Chat →</a>
@@ -618,6 +775,10 @@
           <label class="source-chip-label" id="lbl-tests">
             <input type="checkbox" id="srcTests">
             Test Plans
+          </label>
+          <label class="source-chip-label" id="lbl-workitems">
+            <input type="checkbox" id="srcWorkItems">
+            Work Items
           </label>
         </div>
 
@@ -703,15 +864,79 @@
             <div class="picker-validation" id="testValidation"></div>
           </div>
         </div>
-        <!-- Clear manifest — forces full re-index on next run -->
-        <div class="manifest-row" id="manifestRow">
-          <div class="setting-info">
-            <div class="setting-label">Force full re-index</div>
-            <div class="setting-desc">Deletes the change-detection manifest so every record is re-chunked, re-embedded and re-uploaded on the next run — regardless of whether content changed.</div>
-            <div class="manifest-status" id="manifestStatus"></div>
+        <!-- Work Items area picker — shown only when Work Items is checked -->
+        <div class="picker-panel hidden" id="workItemsPicker">
+          <div class="picker-header" id="workItemsPickerHeader">
+            <div class="picker-header-left">
+              <span class="picker-title">Areas</span>
+              <span class="picker-badge" id="areaCountBadge"></span>
+            </div>
+            <span class="picker-chevron" id="workItemsChevron">▼</span>
           </div>
-          <button class="manifest-btn" id="clearManifestBtn" title="Clear hash manifest">🗑 Clear manifest</button>
+          <div class="picker-body" id="workItemsPickerBody">
+            <div class="picker-search-wrap">
+              <span class="picker-search-icon">🔍</span>
+              <input class="picker-search" id="areaSearch" placeholder="Filter areas…" autocomplete="off">
+            </div>
+            <div class="picker-actions">
+              <button class="picker-action-btn" id="areaSelectAll">Select all</button>
+              <button class="picker-action-btn" id="areaDeselectAll">Deselect all</button>
+            </div>
+            <div class="area-tree" id="areaTree">
+              <div class="picker-loading" id="areaLoading">Loading areas…</div>
+            </div>
+            <!-- Per-type counts for the current selection -->
+            <div class="area-counts" id="areaCounts">
+              <div class="area-counts-header">Items in selected areas</div>
+              <div class="area-counts-grid" id="areaCountsGrid"></div>
+              <div class="area-counts-total" id="areaCountsTotal"></div>
+            </div>
+            <div class="picker-validation" id="areaValidation">Select at least one Area to crawl work items.</div>
+          </div>
         </div>
+
+        <!-- legacy empty placeholder so any leftover JS refs don't error -->
+        <div class="manifest-row hidden" id="manifestRow" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <!-- ── Maintenance ─────────────────────────────────────────── -->
+    <div class="maintenance-card">
+      <h4>⚠ Maintenance</h4>
+
+      <!-- Clear manifest -->
+      <div class="maintenance-row">
+        <div class="maintenance-info">
+          <div class="maintenance-label">Clear change-detection manifest <code>rag_hashes.json</code></div>
+          <div class="maintenance-desc">
+            The manifest stores a hash of every indexed record so unchanged content is skipped.
+            Delete it when you want to force a full re-index — for example after updating
+            ingestion code, or when the index seems stale despite a successful crawl.
+            The next run will re-chunk, re-embed and re-upload every record.
+          </div>
+          <div class="manifest-status" id="manifestStatus"></div>
+        </div>
+        <button class="manifest-btn" id="clearManifestBtn" title="Delete rag_hashes.json from blob storage">
+          🗑 Clear manifest
+        </button>
+      </div>
+
+      <!-- Delete snapshot -->
+      <div class="maintenance-row">
+        <div class="maintenance-info">
+          <div class="maintenance-label">Delete crawl snapshot <code id="snapshotBlobName">rag_ulpsi_NetProjects10.jsonl</code></div>
+          <div class="maintenance-desc">
+            The snapshot is the raw JSONL file produced by crawling — it contains every wiki page,
+            source code file, test case, work item, and commit diff fetched from Azure DevOps.
+            Delete it only if you suspect the snapshot itself is corrupted or you want to free up
+            storage. The next run with <em>Crawl ON</em> will rebuild it automatically.
+            Running with <em>Crawl OFF</em> after deleting will fail (nothing to load).
+          </div>
+          <div class="manifest-status" id="snapshotStatus"></div>
+        </div>
+        <button class="manifest-btn" id="deleteSnapshotBtn" title="Delete the crawl snapshot JSONL blob from blob storage">
+          🗑 Delete snapshot
+        </button>
       </div>
     </div>
 
@@ -746,7 +971,10 @@
 
     <!-- Log -->
     <div class="log-wrap">
-      <div class="log-header">Live Log</div>
+      <div class="log-header">
+        <span>Live Log</span>
+        <span class="log-timer" id="logTimer">00:00</span>
+      </div>
       <div class="log" id="log">
         <div class="log-line"><span class="ts">--:--:--</span><span class="msg">Waiting to start…</span></div>
       </div>
@@ -776,6 +1004,10 @@
           <div class="stat-value" id="s-failed">—</div>
           <div class="stat-label">Failed</div>
         </div>
+        <div class="stat">
+          <div class="stat-value" id="s-duration">—</div>
+          <div class="stat-label">Duration</div>
+        </div>
       </div>
       <div class="stat-grid" id="source-breakdown" style="margin-top:0.75rem;display:none;">
         <div class="stat">
@@ -790,8 +1022,16 @@
           <div class="stat-value" id="s-tests">—</div>
           <div class="stat-label">Test Cases</div>
         </div>
+        <div class="stat">
+          <div class="stat-value" id="s-workitems">—</div>
+          <div class="stat-label">Work Items</div>
+        </div>
       </div>
-      <div class="blob-name">Blob: <span id="s-blob">—</span></div>
+    </div>
+
+    <!-- Always-visible file footer — shown even before the first run -->
+    <div class="blob-name" id="fileFooter">
+      Snapshot: <span id="f-blob">rag_ulpsi_NetProjects10.jsonl</span> &nbsp;|&nbsp; Manifest: <span id="f-hash">rag_hashes.json</span>
     </div>
 
   </div>
@@ -802,6 +1042,33 @@
     const summaryEl = document.getElementById('summary');
     const STEPS     = ['crawl', 'chunk', 'embed', 'index', 'upload'];
 
+    // ── Elapsed timer ─────────────────────────────────────────────────────────
+    let _timerInterval = null;
+    let _timerStart    = null;
+    const timerEl = document.getElementById('logTimer');
+
+    function _fmtElapsed(ms) {
+      const totalSec = Math.floor(ms / 1000);
+      const h = Math.floor(totalSec / 3600);
+      const m = Math.floor((totalSec % 3600) / 60);
+      const s = totalSec % 60;
+      if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+
+    function startTimer() {
+      _timerStart = Date.now();
+      timerEl.textContent = '00:00';
+      _timerInterval = setInterval(() => {
+        timerEl.textContent = _fmtElapsed(Date.now() - _timerStart);
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
+      if (_timerStart) timerEl.textContent = _fmtElapsed(Date.now() - _timerStart) + ' ✓';
+    }
+
     // ── Settings toggles ──────────────────────────────────────────────────────
     const crawlToggle = document.getElementById('crawlToggle');
     const sourcesRow  = document.getElementById('sourcesRow');
@@ -809,10 +1076,10 @@
     crawlToggle.addEventListener('change', () => {
       const on = crawlToggle.checked;
       sourcesRow.classList.toggle('hidden', !on);
-      document.getElementById('manifestRow').classList.toggle('hidden', !on);
       if (!on) {
-        setPanel('repoPicker', false);
-        setPanel('testPicker', false);
+        setPanel('repoPicker',      false);
+        setPanel('testPicker',      false);
+        setPanel('workItemsPicker', false);
       }
     });
 
@@ -820,7 +1087,7 @@
     document.getElementById('clearManifestBtn').addEventListener('click', async () => {
       const statusEl = document.getElementById('manifestStatus');
       const btn      = document.getElementById('clearManifestBtn');
-      if (!confirm('Delete the hash manifest?\n\nThe next ingestion run will re-chunk, re-embed and re-upload every record, even if its content has not changed. This may take significantly longer than a normal run.')) return;
+      if (!confirm('Delete the hash manifest (rag_hashes.json)?\n\nUse this when:\n• The ingestion code was updated and records need to be re-processed\n• The index seems stale despite a successful crawl\n\nThe next run will re-chunk, re-embed and re-upload every record — this will take significantly longer than a normal run.')) return;
       btn.disabled = true;
       statusEl.className = 'manifest-status';
       statusEl.textContent = 'Clearing…';
@@ -837,13 +1104,36 @@
       }
     });
 
-    [['srcWiki','lbl-wiki'],['srcCode','lbl-code'],['srcTests','lbl-tests']].forEach(([cbId, lblId]) => {
+    // ── Delete snapshot ───────────────────────────────────────────────────────
+    document.getElementById('deleteSnapshotBtn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('snapshotStatus');
+      const btn      = document.getElementById('deleteSnapshotBtn');
+      const blobName = document.getElementById('snapshotBlobName').textContent;
+      if (!confirm(`Delete the crawl snapshot (${blobName})?\n\nThis removes the raw JSONL data fetched from Azure DevOps.\nUse this only if the snapshot is corrupted or you want to free storage.\n\n• Running with Crawl ON after this will rebuild the snapshot.\n• Running with Crawl OFF after this will FAIL — there is nothing to load.`)) return;
+      btn.disabled = true;
+      statusEl.className = 'manifest-status';
+      statusEl.textContent = 'Deleting…';
+      try {
+        const res = await fetch('/api/snapshot', { method: 'DELETE' });
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        statusEl.className = 'manifest-status ok';
+        statusEl.textContent = `✓ Snapshot deleted — run with Crawl ON to rebuild it.`;
+      } catch (err) {
+        statusEl.className = 'manifest-status err';
+        statusEl.textContent = `✕ ${err.message}`;
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    [['srcWiki','lbl-wiki'],['srcCode','lbl-code'],['srcTests','lbl-tests'],['srcWorkItems','lbl-workitems']].forEach(([cbId, lblId]) => {
       const cb  = document.getElementById(cbId);
       const lbl = document.getElementById(lblId);
       cb.addEventListener('change', () => {
         lbl.classList.toggle('active', cb.checked);
-        if (cbId === 'srcCode')  setPanel('repoPicker', cb.checked);
-        if (cbId === 'srcTests') setPanel('testPicker',  cb.checked);
+        if (cbId === 'srcCode')      setPanel('repoPicker',      cb.checked);
+        if (cbId === 'srcTests')     setPanel('testPicker',      cb.checked);
+        if (cbId === 'srcWorkItems') setPanel('workItemsPicker', cb.checked);
       });
     });
 
@@ -908,11 +1198,13 @@
         items.forEach(item => {
           const el = document.createElement('label');
           el.className = 'picker-item';
+          // dataset key stores the searchable name (raw, not indented) so filtering works
           el.dataset[dataKey] = item.name;
+          const displayLabel = item.display !== undefined ? item.display : item.name;
           el.innerHTML = `
             <input type="checkbox" value="${item.id}">
             <div class="picker-checkbox"></div>
-            <span class="picker-item-name" title="${item.name}">${item.name}</span>`;
+            <span class="picker-item-name" title="${item.name}">${displayLabel}</span>`;
           el.addEventListener('click', e => {
             e.preventDefault();
             const cb = el.querySelector('input');
@@ -1142,6 +1434,216 @@
       if (e.target.checked) loadTestPickerData();
     });
 
+    // ── Work Items / Area treeview ────────────────────────────────────────────
+
+    // Collapsible panel header (wired manually — not using makePicker)
+    document.getElementById('workItemsPickerHeader').addEventListener('click', () => {
+      const open = document.getElementById('workItemsPickerBody').classList.toggle('open');
+      document.getElementById('workItemsChevron').classList.toggle('open', open);
+    });
+
+    let areasLoaded = false;
+
+    // Build nested tree structure from the flat depth-annotated list
+    function buildAreaTree(flatList) {
+      const root = { children: [] };
+      const stack = [{ node: root, depth: -1 }];
+      for (const item of flatList) {
+        const node = { path: item.path, name: item.name, depth: item.depth, children: [] };
+        while (stack.length > 1 && stack[stack.length - 1].depth >= item.depth) stack.pop();
+        stack[stack.length - 1].node.children.push(node);
+        stack.push({ node, depth: item.depth });
+      }
+      return root.children;
+    }
+
+    function renderAreaNode(node) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'area-tree-node';
+      wrapper.dataset.path  = node.path;
+      wrapper.dataset.aname = node.name.toLowerCase();
+
+      const row = document.createElement('div');
+      row.className = 'area-node';
+
+      // Chevron
+      if (node.children.length) {
+        const chev = document.createElement('span');
+        chev.className = 'area-chevron';
+        chev.textContent = '▶';
+        chev.addEventListener('click', e => {
+          e.stopPropagation();
+          const children = wrapper.querySelector('.area-children');
+          const open = children.classList.toggle('collapsed');
+          chev.classList.toggle('open', !open);
+        });
+        row.appendChild(chev);
+      } else {
+        const spacer = document.createElement('span');
+        spacer.className = 'area-chevron-empty';
+        row.appendChild(spacer);
+      }
+
+      // Checkbox
+      const cb = document.createElement('div');
+      cb.className = 'area-checkbox';
+      row.appendChild(cb);
+
+      // Name
+      const label = document.createElement('span');
+      label.className = 'area-node-name';
+      label.textContent = node.name;
+      label.title = node.path;
+      row.appendChild(label);
+
+      // Click row → toggle this node + all descendants
+      row.addEventListener('click', () => {
+        const nowChecked = !row.classList.contains('checked');
+        setAreaSubtree(wrapper, nowChecked);
+        updateAreaBadge();
+      });
+
+      wrapper.appendChild(row);
+
+      // Children
+      if (node.children.length) {
+        const childrenDiv = document.createElement('div');
+        childrenDiv.className = 'area-children collapsed'; // start collapsed
+        node.children.forEach(child => childrenDiv.appendChild(renderAreaNode(child)));
+        wrapper.appendChild(childrenDiv);
+      }
+
+      return wrapper;
+    }
+
+    function setAreaSubtree(wrapper, checked) {
+      wrapper.querySelectorAll('.area-node').forEach(row => {
+        row.classList.toggle('checked', checked);
+        row.querySelector('.area-checkbox').textContent = checked ? '✓' : '';
+        row.querySelector('.area-checkbox').style.color = checked ? '#fff' : 'transparent';
+      });
+    }
+
+    function getCheckedAreas() {
+      const all = Array.from(document.getElementById('areaTree')
+        .querySelectorAll('.area-tree-node'))
+        .filter(w => w.querySelector('.area-node')?.classList.contains('checked'))
+        .map(w => w.dataset.path)
+        .filter(Boolean);
+
+      // Compute minimal cover: if both "A" and "A\B" are checked, only "A" is needed
+      // because WIQL's UNDER operator already covers all sub-paths.
+      // Sending 100+ redundant UNDER clauses causes Azure DevOps to reject queries for
+      // high-volume types (Bug, Task) even when the result count is well under 20K.
+      const sorted = [...all].sort((a, b) => a.length - b.length || a.localeCompare(b));
+      const minimal = [];
+      for (const path of sorted) {
+        if (!minimal.some(p => path === p || path.startsWith(p + '\\'))) {
+          minimal.push(path);
+        }
+      }
+      return minimal;
+    }
+
+    function updateAreaBadge() {
+      const n = getCheckedAreas().length;
+      const badge = document.getElementById('areaCountBadge');
+      badge.textContent = n ? `${n} selected` : '';
+      badge.classList.toggle('visible', n > 0);
+      scheduleAreaCounts();
+    }
+
+    // ── Area counts fetch (debounced) ─────────────────────────────────────────
+    const _WI_TYPES = ['Epic', 'Feature', 'User Story', 'Task', 'Bug'];
+    let _areaCountsTimer = null;
+
+    function _renderAreaCountsLoading() {
+      const grid = document.getElementById('areaCountsGrid');
+      grid.innerHTML = _WI_TYPES.map(t =>
+        `<span class="area-count-chip loading"><span class="chip-type">${t}</span><span class="chip-count">…</span></span>`
+      ).join('');
+      document.getElementById('areaCountsTotal').textContent = '';
+      document.getElementById('areaCounts').classList.add('visible');
+    }
+
+    function _renderAreaCounts(counts, truncated, total, totalTruncated) {
+      const grid = document.getElementById('areaCountsGrid');
+      grid.innerHTML = _WI_TYPES.map(t => {
+        const n    = counts[t] ?? 0;
+        const over = (truncated || {})[t];
+        const label = over ? `${n.toLocaleString()}+` : n.toLocaleString();
+        return `<span class="area-count-chip ${n > 0 || over ? 'has-items' : ''}">
+          <span class="chip-type">${t}</span>
+          <span class="chip-count">${label}</span>
+        </span>`;
+      }).join('');
+      const totalLabel = totalTruncated ? `${total.toLocaleString()}+` : total.toLocaleString();
+      document.getElementById('areaCountsTotal').innerHTML =
+        `Total: <strong>${totalLabel}</strong> work item(s)`;
+    }
+
+    function scheduleAreaCounts() {
+      if (_areaCountsTimer) clearTimeout(_areaCountsTimer);
+      const selected = getCheckedAreas();
+      if (!selected.length) {
+        document.getElementById('areaCounts').classList.remove('visible');
+        return;
+      }
+      _renderAreaCountsLoading();
+      _areaCountsTimer = setTimeout(async () => {
+        try {
+          const params = new URLSearchParams({ areas: selected.join(',') });
+          const data = await fetch('/api/areas/counts?' + params).then(r => r.json());
+          _renderAreaCounts(data.counts || {}, data.truncated || {}, data.total || 0, data.total_truncated || false);
+        } catch {
+          document.getElementById('areaCountsTotal').textContent = 'Could not load counts.';
+        }
+      }, 600);  // 600 ms debounce — avoids hammering on rapid checkbox clicks
+    }
+
+    // Search — filters tree nodes by name; shows/hides whole subtree wrappers
+    document.getElementById('areaSearch').addEventListener('input', () => {
+      const q = document.getElementById('areaSearch').value.toLowerCase().trim();
+      document.getElementById('areaTree').querySelectorAll('.area-tree-node').forEach(w => {
+        w.classList.toggle('hidden-filter', q ? !w.dataset.aname.includes(q) : false);
+      });
+    });
+
+    document.getElementById('areaSelectAll').addEventListener('click', () => {
+      document.getElementById('areaTree').querySelectorAll('.area-tree-node:not(.hidden-filter)').forEach(w => {
+        setAreaSubtree(w, true);
+      });
+      updateAreaBadge();
+    });
+
+    document.getElementById('areaDeselectAll').addEventListener('click', () => {
+      document.getElementById('areaTree').querySelectorAll('.area-tree-node').forEach(w => {
+        setAreaSubtree(w, false);
+      });
+      updateAreaBadge();
+    });
+
+    async function loadAreas() {
+      if (areasLoaded) return;
+      try {
+        const data = await fetch('/api/areas').then(r => r.json());
+        document.getElementById('areaLoading').style.display = 'none';
+        const tree = buildAreaTree(data.areas || []);
+        const container = document.getElementById('areaTree');
+        container.innerHTML = '';
+        tree.forEach(node => container.appendChild(renderAreaNode(node)));
+        areasLoaded = true;
+        document.getElementById('workItemsPickerBody').classList.add('open');
+        document.getElementById('workItemsChevron').classList.add('open');
+      } catch {
+        document.getElementById('areaLoading').textContent = 'Failed to load areas.';
+      }
+    }
+
+    document.getElementById('srcWorkItems').addEventListener('change', e => {
+      if (e.target.checked) loadAreas();
+    });
+
     // Clear test validation message whenever the user makes any selection in the test picker
     document.getElementById('testPickerBody').addEventListener('change', () => {
       document.getElementById('testValidation').classList.remove('visible');
@@ -1173,6 +1675,8 @@
       logEl.innerHTML = '';
       summaryEl.style.display = 'none';
       document.getElementById('source-breakdown').style.display = 'none';
+      timerEl.textContent = '00:00';
+      if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
       STEPS.forEach(s => {
         const el = document.getElementById(`pill-${s}`);
         el.className = 'pill';
@@ -1181,17 +1685,23 @@
     }
 
     function showSummary(s) {
-      document.getElementById('s-pages').textContent   = s.pages    ?? '—';
-      document.getElementById('s-skipped').textContent = s.skipped  ?? '—';
-      document.getElementById('s-chunks').textContent  = s.chunks   ?? '—';
+      document.getElementById('s-pages').textContent    = s.pages    ?? '—';
+      document.getElementById('s-skipped').textContent  = s.skipped  ?? '—';
+      document.getElementById('s-chunks').textContent   = s.chunks   ?? '—';
       document.getElementById('s-uploaded').textContent = s.uploaded ?? '—';
-      document.getElementById('s-failed').textContent  = s.failed   ?? 0;
-      document.getElementById('s-blob').textContent    = s.blob     ?? '—';
-      const hasBreakdown = s.wiki_count != null || s.code_count != null || s.test_count != null;
+      document.getElementById('s-failed').textContent   = s.failed   ?? 0;
+      document.getElementById('s-duration').textContent = _timerStart
+        ? _fmtElapsed(Date.now() - _timerStart) : '—';
+      if (s.blob) {
+        document.getElementById('f-blob').textContent = s.blob;
+        document.getElementById('snapshotBlobName').textContent = s.blob;
+      }
+      const hasBreakdown = s.wiki_count != null || s.code_count != null || s.test_count != null || s.wi_count != null;
       if (hasBreakdown) {
-        document.getElementById('s-wiki').textContent  = s.wiki_count  ?? '—';
-        document.getElementById('s-code').textContent  = s.code_count  ?? '—';
-        document.getElementById('s-tests').textContent = s.test_count  ?? '—';
+        document.getElementById('s-wiki').textContent      = s.wiki_count ?? '—';
+        document.getElementById('s-code').textContent      = s.code_count ?? '—';
+        document.getElementById('s-tests').textContent     = s.test_count ?? '—';
+        document.getElementById('s-workitems').textContent = s.wi_count   ?? '—';
         document.getElementById('source-breakdown').style.display = 'grid';
       }
       summaryEl.style.display = 'block';
@@ -1211,6 +1721,18 @@
           document.getElementById('repoChevron').classList.add('open');
           return;
         }
+      }
+
+      // Validate: work items requires ≥1 area
+      const workItemsChecked = document.getElementById('srcWorkItems').checked;
+      if (crawlToggle.checked && workItemsChecked) {
+        if (!getCheckedAreas().length) {
+          document.getElementById('areaValidation').classList.add('visible');
+          document.getElementById('workItemsPickerBody').classList.add('open');
+          document.getElementById('workItemsChevron').classList.add('open');
+          return;
+        }
+        document.getElementById('areaValidation').classList.remove('visible');
       }
 
       // Validate: tests requires ≥1 plan, ≥1 suite, ≥1 test case
@@ -1238,43 +1760,58 @@
       }
 
       resetUI();
+      startTimer();
       btn.disabled = true;
       btn.innerHTML = '<span class="btn-icon">⏳</span> Running…';
 
-      const selectedRepos  = crawlToggle.checked && codeChecked  ? repoPicker.getChecked()        : [];
-      const selectedPlans  = crawlToggle.checked && testsChecked ? planPicker.getChecked()        : [];
-      const selectedSuites = crawlToggle.checked && testsChecked ? getCheckedIds('suiteList')     : [];
-      const selectedTcs    = crawlToggle.checked && testsChecked ? getCheckedIds('tcList')        : [];
+      const selectedRepos  = crawlToggle.checked && codeChecked       ? repoPicker.getChecked()        : [];
+      const selectedPlans  = crawlToggle.checked && testsChecked       ? planPicker.getChecked()        : [];
+      const selectedSuites = crawlToggle.checked && testsChecked       ? getCheckedIds('suiteList')     : [];
+      const selectedTcs    = crawlToggle.checked && testsChecked       ? getCheckedIds('tcList')        : [];
+      const selectedAreas  = crawlToggle.checked && workItemsChecked   ? getCheckedAreas()              : [];
 
       const params = new URLSearchParams({
-        crawl:  crawlToggle.checked,
-        wiki:   document.getElementById('srcWiki').checked,
-        code:   codeChecked,
-        tests:  testsChecked,
-        repos:  selectedRepos.join(','),
-        plans:  selectedPlans.join(','),
-        suites: selectedSuites.join(','),
-        tcs:    selectedTcs.join(','),
+        crawl:       crawlToggle.checked,
+        wiki:        document.getElementById('srcWiki').checked,
+        code:        codeChecked,
+        tests:       testsChecked,
+        work_items:  workItemsChecked,
+        repos:       selectedRepos.join(','),
+        plans:       selectedPlans.join(','),
+        suites:      selectedSuites.join(','),
+        tcs:         selectedTcs.join(','),
+        areas:       selectedAreas.join(','),
       });
 
       const es = new EventSource('/ingest/stream?' + params.toString());
+
+      function finishRun() {
+        stopTimer();
+        btn.disabled = false;
+        btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
+      }
 
       es.onmessage = e => {
         const evt = JSON.parse(e.data);
         if (evt.step === '__done__') {
           es.close();
-          btn.disabled = false;
-          btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
+          finishRun();
           return;
         }
         const { step, status, message, summary } = evt;
         setPill(step, status);
-        const logType = status === 'done' ? 'success' : status === 'error' ? 'error' : 'active';
+        // Per-item progress lines like "(4682/6559) Bug 254319 · paging error on main grid…"
+        // may contain "error" in the work item title — never colour them as errors.
+        const isItemProgressLine = /\(\d+\/\d+\)/.test(message || '');
+        const msgIsError = !isItemProgressLine && /failed|error|warning|skipped.*inaccessible/i.test(message || '');
+        const logType = status === 'done' ? 'success'
+                      : status === 'error' ? 'error'
+                      : msgIsError ? 'error'
+                      : 'active';
         addLog(`[${step.toUpperCase()}] ${message}`, logType);
         if (status === 'error') {
           es.close();
-          btn.disabled = false;
-          btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
+          finishRun();
         }
         if (summary) showSummary(summary);
       };
@@ -1282,8 +1819,7 @@
       es.onerror = () => {
         addLog('Connection lost — check server logs.', 'error');
         es.close();
-        btn.disabled = false;
-        btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
+        finishRun();
       };
     });
   </script>

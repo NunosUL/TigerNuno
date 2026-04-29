@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -22,10 +22,73 @@
       --warning: #d29922;
       --purple: #a371f7;
       --purple-glow: rgba(163, 113, 247, 0.12);
+      --orange: #f0883e;
+      --orange-glow: rgba(240, 136, 62, 0.12);
+      --teal: #39c5cf;
+      --teal-glow: rgba(57, 197, 207, 0.1);
       --user-bubble: #1c2d4a;
       --user-border: #2f4a7a;
       --bot-bubble: #161b22;
     }
+
+    .md-table-container { margin: 0.55rem 0; }
+    .md-table-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.35rem;
+      margin-bottom: 0.25rem;
+    }
+    .md-copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.55rem;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .md-copy-btn:hover { background: var(--accent-glow); border-color: var(--accent); color: var(--text); }
+    .md-copy-btn.copied { color: var(--success); border-color: var(--success); }
+
+    /* ── Code blocks ── */
+    .md-code-container { margin: 0.55rem 0; }
+    .md-code-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      padding: 0.3rem 0.75rem;
+    }
+    .md-code-lang {
+      font-size: 0.65rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .md-code-block {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 0 0 6px 6px;
+      padding: 0.85rem 1.25rem;
+      font-family: "SFMono-Regular", Consolas, "Courier New", monospace;
+      font-size: 0.8rem;
+      color: #e6edf3;
+      overflow-x: auto;
+      white-space: pre;
+      line-height: 1.65;
+      margin: 0;
+    }
+    .md-code-block .diff-add  { color: #3fb950; background: rgba(63,185,80,0.1);   display: inline-block; width: 100%; }
+    .md-code-block .diff-del  { color: #f85149; background: rgba(248,81,73,0.1);   display: inline-block; width: 100%; }
+    .md-code-block .diff-info { color: #79b8ff; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -100,11 +163,12 @@
     }
     .empty-icon { font-size: 2.5rem; }
     .empty-state h2 { font-size: 1.1rem; color: var(--text); }
-    .empty-state p { font-size: 0.85rem; line-height: 1.6; max-width: 420px; }
+    .empty-state p { font-size: 0.85rem; line-height: 1.6; max-width: 460px; }
 
+    /* ── Source pills ── */
     .source-pills {
       display: flex;
-      gap: 0.5rem;
+      gap: 0.45rem;
       flex-wrap: wrap;
       justify-content: center;
     }
@@ -112,53 +176,116 @@
       display: inline-flex;
       align-items: center;
       gap: 0.35rem;
-      font-size: 0.72rem;
+      font-size: 0.7rem;
       font-weight: 600;
-      padding: 0.2rem 0.65rem;
+      padding: 0.2rem 0.6rem;
       border-radius: 999px;
       border: 1px solid;
       letter-spacing: 0.2px;
     }
-    .source-pill.wiki  { border-color: var(--accent);   color: var(--accent);   background: var(--accent-glow); }
-    .source-pill.code  { border-color: var(--purple);   color: var(--purple);   background: var(--purple-glow); }
-    .source-pill.tests { border-color: var(--success);  color: var(--success);  background: var(--success-glow); }
+    .source-pill.wiki      { border-color: var(--accent);  color: var(--accent);  background: var(--accent-glow);  }
+    .source-pill.code      { border-color: var(--purple);  color: var(--purple);  background: var(--purple-glow);  }
+    .source-pill.tests     { border-color: var(--success); color: var(--success); background: var(--success-glow); }
+    .source-pill.workitems { border-color: var(--orange);  color: var(--orange);  background: var(--orange-glow);  }
+    .source-pill.diffs     { border-color: var(--teal);    color: var(--teal);    background: var(--teal-glow);    }
 
-    .suggestion-groups {
-      display: flex;
-      flex-direction: column;
-      gap: 0.85rem;
-      margin-top: 0.25rem;
-      max-width: 560px;
+    /* ── Questions accordion panel ── */
+    .questions-panel {
+      max-width: 580px;
       width: 100%;
-    }
-    .suggestion-group {
+      margin-top: 0.25rem;
       display: flex;
       flex-direction: column;
       gap: 0.35rem;
-      align-items: center;
     }
-    .suggestion-group-label {
+
+    .q-panel-label {
       font-size: 0.65rem;
       text-transform: uppercase;
       letter-spacing: 0.6px;
       color: var(--muted);
-      opacity: 0.7;
+      opacity: 0.65;
+      margin-bottom: 0.15rem;
     }
-    .suggestion-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-      justify-content: center;
-    }
-    .suggestion {
-      padding: 0.35rem 0.85rem;
+
+    .q-accordion {
       border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      background: var(--surface2);
+    }
+
+    .q-accordion-header {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 600;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .q-accordion-header:hover { background: rgba(255,255,255,0.035); }
+
+    .q-icon { font-size: 0.95rem; flex-shrink: 0; }
+    .q-name { flex: 1; text-align: left; }
+    .q-count {
+      font-size: 0.65rem;
+      font-weight: 500;
+      padding: 0.08rem 0.4rem;
       border-radius: 999px;
-      font-size: 0.78rem;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .q-chevron {
+      font-size: 0.65rem;
+      color: var(--muted);
+      transition: transform 0.2s;
+      margin-left: 0.1rem;
+    }
+
+    .q-accordion.open .q-accordion-header { border-bottom: 1px solid var(--border); }
+    .q-accordion.open .q-chevron { transform: rotate(90deg); }
+
+    .q-accordion-body {
+      display: none;
+      flex-direction: column;
+      gap: 0.25rem;
+      padding: 0.5rem 0.75rem 0.6rem;
+    }
+    .q-accordion.open .q-accordion-body { display: flex; }
+
+    /* colour theme per source */
+    .q-accordion.wiki      .q-accordion-header { border-left: 3px solid var(--accent);  }
+    .q-accordion.code      .q-accordion-header { border-left: 3px solid var(--purple);  }
+    .q-accordion.tests     .q-accordion-header { border-left: 3px solid var(--success); }
+    .q-accordion.workitems .q-accordion-header { border-left: 3px solid var(--orange);  }
+    .q-accordion.diffs     .q-accordion-header { border-left: 3px solid var(--teal);    }
+
+    .q-accordion.wiki      .q-name { color: var(--accent);  }
+    .q-accordion.code      .q-name { color: var(--purple);  }
+    .q-accordion.tests     .q-name { color: var(--success); }
+    .q-accordion.workitems .q-name { color: var(--orange);  }
+    .q-accordion.diffs     .q-name { color: var(--teal);    }
+
+    .q-accordion.wiki      .q-count { border-color: var(--accent);  color: var(--accent);  }
+    .q-accordion.code      .q-count { border-color: var(--purple);  color: var(--purple);  }
+    .q-accordion.tests     .q-count { border-color: var(--success); color: var(--success); }
+    .q-accordion.workitems .q-count { border-color: var(--orange);  color: var(--orange);  }
+    .q-accordion.diffs     .q-count { border-color: var(--teal);    color: var(--teal);    }
+
+    .suggestion {
+      padding: 0.42rem 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 0.8rem;
       color: var(--muted);
       cursor: pointer;
       transition: all 0.2s;
-      background: var(--surface2);
+      background: var(--surface);
+      text-align: left;
+      width: 100%;
     }
     .suggestion:hover {
       border-color: var(--accent);
@@ -175,21 +302,42 @@
       margin: 0 auto;
     }
 
-    .message.user { align-items: flex-end; }
+    .message.user { align-items: flex-end; position: relative; }
+
+    /* ── Reuse question button ── */
+    .reuse-btn {
+      position: absolute;
+      top: -0.45rem;
+      right: -0.3rem;
+      opacity: 0;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 0.18rem 0.45rem;
+      line-height: 1;
+      transition: opacity 0.15s, border-color 0.2s, color 0.2s;
+      white-space: nowrap;
+    }
+    .message.user:hover .reuse-btn { opacity: 1; }
+    .reuse-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
     .message.bot  { align-items: flex-start; }
 
     .bubble {
+      position: relative;
       padding: 0.9rem 1.2rem;
       border-radius: 14px;
       font-size: 0.9rem;
       line-height: 1.65;
       max-width: 85%;
-      white-space: pre-wrap;
       word-break: break-word;
     }
 
     .user .bubble {
       background: var(--user-bubble);
+      white-space: pre-wrap;      /* preserve textarea line breaks and indentation */
       border: 1px solid var(--user-border);
       border-bottom-right-radius: 4px;
     }
@@ -212,6 +360,89 @@
       border-radius: 4px;
       padding: 0.1rem 0.35rem;
     }
+    .bubble h2, .bubble h3, .bubble h4 {
+      color: #58a6ff;
+      margin: 0.8rem 0 0.25rem;
+      line-height: 1.3;
+    }
+    .bubble h2 { font-size: 1rem; font-weight: 700; }
+    .bubble hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 0.6rem 0;
+    }
+    .bubble h3 { font-size: 0.92rem; font-weight: 700; }
+    .bubble h4 { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+
+    /* ── Markdown tables — fixed Word-style colors regardless of page theme ── */
+    .md-table-wrap {
+      overflow-x: auto;
+      border-radius: 4px;
+      border: 1px solid #adb5bd;
+    }
+    .md-table {
+      border-collapse: collapse;
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      font-size: 9pt;
+      width: 100%;
+    }
+    .md-table th {
+      background: #106EBE;
+      color: #ffffff;
+      font-weight: 700;
+      padding: 5px 10px;
+      border: 1px solid #0d5a9e;
+      text-align: center;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+    .md-table td {
+      background: #ffffff;
+      color: #000000;
+      font-weight: 400;
+      padding: 4px 10px;
+      border: 1px solid #adb5bd;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+    .md-table tbody tr:hover td { background: #eaf3fb; }
+
+    /* ── Dark table variant ── */
+    .md-table-container.dark-table .md-table-wrap { border-color: #30363d; }
+    .md-table-container.dark-table .md-table th {
+      background: #1f3a5f;
+      color: #ffffff;
+      border-color: #2d5a8e;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .md-table-container.dark-table .md-table td {
+      background: #161b22;
+      color: #e6edf3;
+      border-color: #30363d;
+    }
+    .md-table-container.dark-table .md-table tbody tr:hover td { background: #1c2d3a; }
+
+    .md-theme-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.72rem;
+      padding: 0.2rem 0.45rem;
+      line-height: 1;
+      transition: background 0.15s, color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .md-theme-btn:hover { background: var(--accent-glow); border-color: var(--accent); color: var(--text); }
+
+    /* ── Table full-width expansion ── */
+    .message.table-expanded { max-width: 100%; }
+    .message.table-expanded .bubble { max-width: 100%; }
+    .message.table-expanded .sources { max-width: 100%; }
+    .message.table-expanded .md-table-wrap { overflow-x: visible; }
 
     /* ── Sources ── */
     .sources {
@@ -483,7 +714,7 @@
   <nav class="nav">
     <div class="nav-left">
       <a class="nav-logo" href="/">TigerChat</a>
-      <span class="nav-badge">Wiki · Code · Test Plans</span>
+      <span class="nav-badge">Wiki · Code · Tests · Work Items · Commit Diffs</span>
     </div>
     <div class="nav-links">
       <a href="/ingest">⚡ Ingestion</a>
@@ -497,41 +728,122 @@
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">💬</div>
       <h2>Ask anything about your DevOps content</h2>
-      <p>Answers are grounded in your indexed Azure DevOps content,
+      <p>Answers are grounded in your indexed Azure DevOps content —
+         Wiki pages, source code, test cases, work items, and commit diffs —
          retrieved via hybrid vector + keyword search.</p>
 
       <div class="source-pills">
-        <span class="source-pill wiki">📄 Wiki pages</span>
-        <span class="source-pill code">📝 Source code</span>
-        <span class="source-pill tests">🧪 Test plans</span>
+        <span class="source-pill wiki">📄 Wiki</span>
+        <span class="source-pill code">💻 Code</span>
+        <span class="source-pill tests">🧪 Test Cases</span>
+        <span class="source-pill workitems">📋 Work Items</span>
+        <span class="source-pill diffs">🔀 Commit Diffs</span>
       </div>
 
-      <div class="suggestion-groups">
+      <div class="questions-panel">
+        <div class="q-panel-label">Example questions — expand a source to explore</div>
 
-        <div class="suggestion-group">
-          <span class="suggestion-group-label">📄 Wiki</span>
-          <div class="suggestion-row">
-            <div class="suggestion">What is the automation onboarding process?</div>
-            <div class="suggestion">What are the Azure subscription guidelines?</div>
-            <div class="suggestion">Explain the code flow process</div>
+        <!-- Wiki -->
+        <div class="q-accordion wiki">
+          <div class="q-accordion-header">
+            <span class="q-icon">📄</span>
+            <span class="q-name">Wiki Pages</span>
+            <span class="q-count">4</span>
+            <span class="q-chevron">▶</span>
+          </div>
+          <div class="q-accordion-body">
+            <button class="suggestion">What is the onboarding process for new developers?</button>
+            <button class="suggestion">What are the Azure subscription access guidelines?</button>
+            <button class="suggestion">Explain the deployment process for production releases</button>
+            <button class="suggestion">What architectural decisions were made for the Marketplace feature?</button>
           </div>
         </div>
 
-        <div class="suggestion-group">
-          <span class="suggestion-group-label">📝 Source Code</span>
-          <div class="suggestion-row">
-            <div class="suggestion">How is authentication implemented?</div>
-            <div class="suggestion">Where is the database connection configured?</div>
-            <div class="suggestion">What does the ingestion pipeline do?</div>
+        <!-- Source Code -->
+        <div class="q-accordion code">
+          <div class="q-accordion-header">
+            <span class="q-icon">💻</span>
+            <span class="q-name">Source Code</span>
+            <span class="q-count">4</span>
+            <span class="q-chevron">▶</span>
+          </div>
+          <div class="q-accordion-body">
+            <button class="suggestion">How is authentication handled in the API layer?</button>
+            <button class="suggestion">Where is the database connection string configured?</button>
+            <button class="suggestion">What services implement the IMarketplaceService interface?</button>
+            <button class="suggestion">Explain the retry logic in the HTTP client</button>
           </div>
         </div>
 
-        <div class="suggestion-group">
-          <span class="suggestion-group-label">🧪 Test Plans</span>
-          <div class="suggestion-row">
-            <div class="suggestion">What test cases exist for the login flow?</div>
-            <div class="suggestion">List test cases related to permissions</div>
-            <div class="suggestion">What are the steps for testing the upload feature?</div>
+        <!-- Test Cases -->
+        <div class="q-accordion tests">
+          <div class="q-accordion-header">
+            <span class="q-icon">🧪</span>
+            <span class="q-name">Test Cases</span>
+            <span class="q-count">6</span>
+            <span class="q-chevron">▶</span>
+          </div>
+          <div class="q-accordion-body">
+            <button class="suggestion" data-source-types="test,workitem">For User Story 301615, which existing test cases need to be updated or created based on the acceptance criteria?</button>
+            <button class="suggestion" data-source-types="test,workitem">Based on Bug 301827 and the code changes it introduced, which test cases should be updated, re-run, or added to the regression suite?</button>
+            <button class="suggestion" data-source-types="test,workitem">Generate a test impact analysis for User Story 301701: list affected test cases, coverage gaps, and recommended new test scenarios</button>
+            <button class="suggestion" data-source-types="test,workitem">Which test cases cover the acceptance criteria of User Story 301701, and which criteria currently have no test coverage?</button>
+            <button class="suggestion" data-source-types="test">List all test cases in the Authentication test suite with their full steps and expected results</button>
+            <button class="suggestion" data-source-types="test">What are the exact test steps for the data export acceptance tests, including all preconditions?</button>
+          </div>
+        </div>
+
+        <!-- Work Items -->
+        <div class="q-accordion workitems">
+          <div class="q-accordion-header">
+            <span class="q-icon">📋</span>
+            <span class="q-name">Work Items</span>
+            <span class="q-count">6</span>
+            <span class="q-chevron">▶</span>
+          </div>
+          <div class="q-accordion-body">
+            <button class="suggestion">What User Stories are currently active in the Marketplace area?</button>
+            <button class="suggestion">Summarise all open Bugs for the WERCSmart product</button>
+            <button class="suggestion">What is the acceptance criteria for User Story 301701?</button>
+            <button class="suggestion">PFQ review for User Story 301701 — what changed in authentication, APIs, or packages?</button>
+            <button class="suggestion" data-source-types="workitem"
+              data-prompt="Based on work item 300340, extract and present the following in three clearly labelled sections:
+
+1. Deployment Packages
+Each deployment package is an application name — it looks like a dotted .NET assembly name (e.g. WERCSmart.Portal.API.Supplier, UL.Wercsmart.API.Authentication - RPSWV), optionally preceded by PROD, PROD -, or a Name: label. Extract EVERY such entry, regardless of whether a Name: label is present or absent. Strip any PROD prefix from the application name. Present as a markdown table with columns: Name | Path | Build ID. Use — for any field that is genuinely absent.
+
+2. Scripts and Additional Files
+List every script or file of any type mentioned in the description (SQL, XML, config, shell scripts, etc.). Present as a markdown table with columns: # | File | Database / Component. Preserve any numbering or TFS references shown.
+
+3. Attachments
+List every file shown in the Attachments section. Present as a markdown table with columns: File Name | Size | Date Added | Work Item.">Change Request — deployment packages, scripts &amp; attachments (single CR)</button>
+            <button class="suggestion" data-source-types="workitem"
+              data-prompt="Based on work items 300340, 301889, 300950, 301867, consolidate and present the following in three clearly labelled sections.
+
+1. Deployment Packages (consolidated, no duplicates)
+Each deployment package is an application name — it looks like a dotted .NET assembly name (e.g. WERCSmart.Portal.API.Supplier, UL.Wercsmart.API.Authentication - RPSWV), optionally preceded by PROD, PROD -, or a Name: label. Extract EVERY such entry from all listed work items, regardless of whether a Name: label is present or absent. Strip any PROD prefix from the application name. Remove duplicate package names across all work items. Present as a markdown table with columns: Name | Path | Build ID. Use — for any field that is genuinely absent.
+
+2. Scripts and Additional Files (consolidated, no duplicates, any type)
+List every script or file of any type mentioned across all work items (SQL, XML, config, shell scripts, etc.). Remove exact duplicates, select the most recent file. Present as a markdown table with columns: # | File | Database | Date Added | Work Item. Preserve any numbering and TFS references. Order the table by &quot;Date Added&quot; descending, the most recent first.
+
+3. Attachments (deduplicated)
+List every file from the Attachments section of each work item. If the same file name appears in more than one work item, keep only the row with the latest Date Added value. Present as a markdown table with columns: File Name | Size | Date Added | Work Item. Order the table by &quot;Date Added&quot; descending, the most recent first.">Change Requests — deployment packages, scripts &amp; attachments (multiple CRs)</button>
+          </div>
+        </div>
+
+        <!-- Commit Diffs -->
+        <div class="q-accordion diffs">
+          <div class="q-accordion-header">
+            <span class="q-icon">🔀</span>
+            <span class="q-name">Commit Diffs</span>
+            <span class="q-count">4</span>
+            <span class="q-chevron">▶</span>
+          </div>
+          <div class="q-accordion-body">
+            <button class="suggestion">What NuGet packages changed in the .NET 10 upgrade commits?</button>
+            <button class="suggestion">Which files were modified in the latest Marketplace service commits?</button>
+            <button class="suggestion">Show the before/after diff for the recent dependency upgrades</button>
+            <button class="suggestion">What code changes were linked to Bug 301827?</button>
           </div>
         </div>
 
@@ -542,7 +854,7 @@
   <!-- Input -->
   <div class="input-area">
     <div class="input-inner">
-      <textarea id="input" placeholder="Ask about the wiki, source code, or test cases…" rows="1"></textarea>
+      <textarea id="input" placeholder="Ask about wiki pages, source code, test cases, work items, or commit diffs…" rows="1"></textarea>
       <button id="sendBtn" title="Send">➤</button>
     </div>
     <div class="input-hint">Enter to send · Shift+Enter for new line</div>
@@ -560,12 +872,30 @@
       input.style.height = Math.min(input.scrollHeight, 160) + 'px';
     });
 
-    // Suggestion chips
+    // Accordion toggle
+    document.querySelectorAll('.q-accordion-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const acc = header.closest('.q-accordion');
+        acc.classList.toggle('open');
+      });
+    });
+
+    // Source-type hint set by suggestion buttons to restrict search scope
+    let _sourceTypesHint = [];
+
+    // Suggestion chips — copy to textarea for editing instead of auto-sending
     document.querySelectorAll('.suggestion').forEach(el => {
       el.addEventListener('click', () => {
-        input.value = el.textContent;
+        input.value = (el.dataset.prompt || el.textContent).trim();
         input.dispatchEvent(new Event('input'));
-        send();
+        input.focus();
+        // Carry the source-types hint so send() can restrict the search
+        _sourceTypesHint = el.dataset.sourceTypes
+          ? el.dataset.sourceTypes.split(',').map(s => s.trim())
+          : [];
+        // Move cursor to end
+        const len = input.value.length;
+        input.setSelectionRange(len, len);
       });
     });
 
@@ -579,6 +909,114 @@
 
     sendBtn.addEventListener('click', send);
 
+    // ── Copy-table button — rich HTML clipboard (preserves colors for Word/Excel/Notion) ──
+    document.getElementById('chatWrap').addEventListener('click', (e) => {
+      // ── Reuse question ──
+      const reuseBtn = e.target.closest('.reuse-btn');
+      if (reuseBtn) {
+        const bubble = reuseBtn.closest('.message.user')?.querySelector('.bubble');
+        if (bubble) {
+          input.value = bubble.textContent;
+          input.dispatchEvent(new Event('input'));
+          input.focus();
+          input.setSelectionRange(input.value.length, input.value.length);
+        }
+        return;
+      }
+
+      // ── Table theme toggle ──
+      const themeBtn = e.target.closest('.md-theme-btn');
+      if (themeBtn) {
+        // ── Table expand/collapse ──
+        if (themeBtn.classList.contains('md-expand-btn')) {
+          const msg = themeBtn.closest('.message');
+          if (msg) {
+            const expanded = msg.classList.toggle('table-expanded');
+            themeBtn.textContent = expanded ? '⤡' : '⤢';
+            themeBtn.title = expanded ? 'Restore width' : 'Expand to full width';
+          }
+          return;
+        }
+        const container = themeBtn.closest('.md-table-container');
+        if (container) {
+          const isDark = container.classList.toggle('dark-table');
+          themeBtn.textContent = isDark ? '☀️' : '🌙';
+          themeBtn.title = isDark ? 'Switch to light table theme' : 'Switch to dark table theme';
+        }
+        return;
+      }
+
+      const btn = e.target.closest('.md-copy-btn');
+      if (!btn) return;
+
+      // ── Code block copy ──
+      if (btn.classList.contains('md-code-copy-btn')) {
+        const code = btn.closest('.md-code-container')?.querySelector('code');
+        if (!code) return;
+        navigator.clipboard.writeText(code.textContent).then(() => {
+          btn.classList.add('copied'); btn.textContent = '✓ Copied';
+          setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '⎘ Copy'; }, 2000);
+        });
+        return;
+      }
+
+      // ── Table copy ──
+      const container = btn.closest('.md-table-container');
+      const table = container ? container.querySelector('.md-table') : null;
+      if (!table) return;
+
+      const TH_STYLE = container.classList.contains('dark-table')
+        ? 'background:#1f3a5f;color:#ffffff;font-family:Segoe UI,Helvetica Neue,sans-serif;font-size:9pt;font-weight:bold;padding:5px 10px;border:1px solid #2d5a8e;text-align:center;white-space:nowrap;'
+        : 'background:#106EBE;color:#ffffff;font-family:Segoe UI,Helvetica Neue,sans-serif;font-size:9pt;font-weight:bold;padding:5px 10px;border:1px solid #0d5a9e;text-align:center;white-space:nowrap;';
+      const TD_STYLE = container.classList.contains('dark-table')
+        ? 'background:#161b22;color:#e6edf3;font-family:Segoe UI,Helvetica Neue,sans-serif;font-size:9pt;font-weight:normal;padding:4px 10px;border:1px solid #30363d;text-align:left;'
+        : 'background:#ffffff;color:#000000;font-family:Segoe UI,Helvetica Neue,sans-serif;font-size:9pt;font-weight:normal;padding:4px 10px;border:1px solid #adb5bd;text-align:left;';
+
+      let richHtml = '<table style="border-collapse:collapse;font-family:Segoe UI,Helvetica Neue,sans-serif;font-size:9pt;">';
+      table.querySelectorAll('tr').forEach(tr => {
+        richHtml += '<tr>';
+        tr.querySelectorAll('th, td').forEach(cell => {
+          const isHdr = cell.tagName === 'TH';
+          const txt = cell.textContent.trim();
+          if (isHdr) {
+            const thColor = container.classList.contains('dark-table') ? '#ffffff' : '#ffffff';
+            richHtml += `<th style="${TH_STYLE}"><span style="color:${thColor};font-weight:bold;">${txt}</span></th>`;
+          } else {
+            richHtml += `<td style="${TD_STYLE}">${txt}</td>`;
+          }
+        });
+        richHtml += '</tr>';
+      });
+      richHtml += '</table>';
+
+      // Plain-text TSV as fallback
+      const tsv = Array.from(table.querySelectorAll('tr'))
+        .map(tr => Array.from(tr.querySelectorAll('th, td')).map(c => c.textContent.trim()).join('\t'))
+        .join('\n');
+
+      const confirm = () => {
+        btn.classList.add('copied');
+        btn.textContent = '✓ Copied';
+        setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '⎘ Copy table'; }, 2000);
+      };
+
+      if (typeof ClipboardItem !== 'undefined') {
+        navigator.clipboard.write([new ClipboardItem({
+          'text/html':  new Blob([richHtml], { type: 'text/html' }),
+          'text/plain': new Blob([tsv],      { type: 'text/plain' }),
+        })]).then(confirm).catch(() => {
+          navigator.clipboard.writeText(tsv).then(confirm);
+        });
+      } else {
+        // Fallback execCommand
+        const ta = document.createElement('textarea');
+        ta.value = tsv; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        confirm();
+      }
+    });
+
     function scrollToBottom() {
       chatWrap.scrollTop = chatWrap.scrollHeight;
     }
@@ -587,7 +1025,7 @@
       emptyState?.remove();
       const msg = document.createElement('div');
       msg.className = 'message user';
-      msg.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+      msg.innerHTML = `<div class="bubble">${escapeHtml(text)}</div><button class="reuse-btn" title="Edit and reuse this question">↩ reuse</button>`;
       chatWrap.appendChild(msg);
       scrollToBottom();
     }
@@ -662,34 +1100,139 @@
       return `<span class="confidence ${c}">${icons[c] || '○'} ${labels[c] || c}</span>`;
     }
 
+    // ── Markdown rendering helpers ────────────────────────────────────────────
+
+    // Shared path-to-URL map populated before each renderMarkdown call
+    let _pathToUrl = {};
+
+    function formatInline(text) {
+      // Escape HTML, then apply inline markdown: headings, bold, code, path links
+      return escapeHtml(text)
+        .replace(/^---+$/gm, '<hr>')          // horizontal rules before \n swap
+        .replace(/\n/g, '<br>')
+        .replace(/^#{4}\s+(.+)$/gm, '<h4>$1</h4>')
+        .replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>')
+        .replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>')
+        // "**Label: value**" → "<strong>Label:</strong> value" (only label bold)
+        .replace(/\*\*([^*:]{1,50}):\s+([^*]*?)\*\*/g, '<strong>$1:</strong> $2')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/(\/repos\/[^\s,;)\]<&\n]+|\/test-cases\/[^\s,;)\]<&\n]+|\/work-items\/[^\s,;)\]<&\n]+|\/commit-diffs\/[^\s,;)\]<&\n]+)/g, (path) => {
+          const url = _pathToUrl[path];
+          const icon = path.startsWith('/test-cases/')   ? '🧪'
+                     : path.startsWith('/repos/')        ? '💻'
+                     : path.startsWith('/work-items/')   ? '📋'
+                     : path.startsWith('/commit-diffs/') ? '🔀'
+                     : '📄';
+          if (url) return `<a class="inline-path-link" href="${escapeHtml(url)}" target="_blank" rel="noopener" title="Open in Azure DevOps">${icon} ${path} ↗</a>`;
+          return `<span class="inline-path">${icon} ${path}</span>`;
+        });
+    }
+
+    function parseCells(line) {
+      return line.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|');
+    }
+
+    function renderTable(tableLines) {
+      // Detect separator row: |---|---| or |:---|:---:| etc.
+      const isSep = l => /^\s*\|[\s|:\-]+\|\s*$/.test(l);
+      // Strip backtick code-spans from table cell text (no <code> tags in tables)
+      const stripCode = t => t.replace(/`([^`]+)`/g, '$1');
+      let header = null, rows = [], seenSep = false;
+      for (const line of tableLines) {
+        if (isSep(line)) { seenSep = true; continue; }
+        const cells = parseCells(line);
+        if (!seenSep && header === null) header = cells;
+        else rows.push(cells);
+      }
+      let tableHtml = '<table class="md-table">';
+      if (header) {
+        tableHtml += '<thead><tr>' + header.map(c => `<th>${formatInline(stripCode(c.trim()))}</th>`).join('') + '</tr></thead>';
+      }
+      tableHtml += '<tbody>' + rows.map(r => '<tr>' + r.map(c => `<td>${formatInline(stripCode(c.trim()))}</td>`).join('') + '</tr>').join('') + '</tbody>';
+      tableHtml += '</table>';
+      return `<div class="md-table-container"><div class="md-table-toolbar"><button class="md-theme-btn" title="Toggle table dark/light theme">🌙</button><button class="md-theme-btn md-expand-btn" title="Expand to full width">⤢</button><button class="md-copy-btn" title="Copy table — pastes with colors into Word, Excel, Notion">⎘ Copy table</button></div><div class="md-table-wrap">${tableHtml}</div></div>`;
+    }
+
+    function renderCodeBlock(lang, lines) {
+      const langLabel = lang || 'code';
+      const codeHtml = lines.map(line => {
+        const escaped = escapeHtml(line);
+        if (lang === 'diff' || lang === 'patch') {
+          if (line.startsWith('+') && !line.startsWith('+++'))
+            return `<span class="diff-add">${escaped}</span>`;
+          if (line.startsWith('-') && !line.startsWith('---'))
+            return `<span class="diff-del">${escaped}</span>`;
+          if (line.startsWith('@@'))
+            return `<span class="diff-info">${escaped}</span>`;
+        }
+        return escaped;
+      }).join('\n');
+      return `<div class="md-code-container"><div class="md-code-toolbar"><span class="md-code-lang">${escapeHtml(langLabel)}</span><button class="md-copy-btn md-code-copy-btn" title="Copy code to clipboard">⎘ Copy</button></div><pre class="md-code-block"><code>${codeHtml}</code></pre></div>`;
+    }
+
+    function renderMarkdown(text) {
+      // Split into table / code / text segments
+      const lines = text.split('\n');
+      const segments = [];
+      let cur = { type: 'text', lines: [] };
+      let inCode = false;
+      let codeLang = '';
+
+      for (const line of lines) {
+        const fenceMatch = line.match(/^```(\w*)$/);
+        if (!inCode && fenceMatch) {
+          if (cur.lines.length) segments.push(cur);
+          inCode = true;
+          codeLang = fenceMatch[1] || '';
+          cur = { type: 'code', lang: codeLang, lines: [] };
+        } else if (inCode && /^```/.test(line)) {
+          segments.push(cur);
+          inCode = false;
+          cur = { type: 'text', lines: [] };
+        } else if (inCode) {
+          cur.lines.push(line);
+        } else {
+          const isTableLine = /^\s*\|/.test(line);
+          if (isTableLine && cur.type !== 'table') {
+            if (cur.lines.length) segments.push(cur);
+            cur = { type: 'table', lines: [line] };
+          } else if (!isTableLine && cur.type !== 'text') {
+            if (cur.lines.length) segments.push(cur);
+            cur = { type: 'text', lines: [line] };
+          } else {
+            cur.lines.push(line);
+          }
+        }
+      }
+      if (cur.lines.length) segments.push(cur);
+
+      return segments.map(seg => {
+        if (seg.type === 'table') return renderTable(seg.lines);
+        if (seg.type === 'code')  return renderCodeBlock(seg.lang, seg.lines);
+        return formatInline(seg.lines.join('\n'));
+      }).join('');
+    }
+
     function addBotMessage(answer, sources, confidence) {
       const msg = document.createElement('div');
       msg.className = 'message bot';
 
-      // Build path → url lookup from sources so we can linkify paths in the answer text
-      const pathToUrl = {};
-      (sources || []).forEach(s => { if (s.path && s.url) pathToUrl[s.path] = s.url; });
+      // Build path → url lookup from sources (used inside formatInline via _pathToUrl)
+      _pathToUrl = {};
+      (sources || []).forEach(s => { if (s.path && s.url) _pathToUrl[s.path] = s.url; });
 
-      // Format answer: bold (**text**), inline code (`code`), then linkify /repos/ and /test-cases/ paths
-      const formatted = escapeHtml(answer)
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/(\/repos\/[^\s,;)\]<&\n]+|\/test-cases\/[^\s,;)\]<&\n]+)/g, (path) => {
-          const url = pathToUrl[path];
-          const icon = path.startsWith('/test-cases/') ? '🧪' : '📝';
-          if (url) {
-            return `<a class="inline-path-link" href="${escapeHtml(url)}" target="_blank" rel="noopener" title="Open in Azure DevOps">${icon} ${path} ↗</a>`;
-          }
-          return `<span class="inline-path">${icon} ${path}</span>`;
-        });
+      const formatted = renderMarkdown(answer);
 
       let sourcesHtml = '';
       if (sources && sources.length > 0) {
         const chips = sources.map(s => {
           const label = s.path || s.url;
           const href = s.url && s.url !== '#' ? s.url : null;
-          const icon = label.startsWith('/test-cases/') ? '🧪'
-                     : label.startsWith('/repos/')      ? '📝'
+          const icon = label.startsWith('/test-cases/')   ? '🧪'
+                     : label.startsWith('/repos/')        ? '💻'
+                     : label.startsWith('/work-items/')   ? '📋'
+                     : label.startsWith('/commit-diffs/') ? '🔀'
                      : '📄';
           if (href) {
             return `<a class="source-chip" href="${escapeHtml(href)}" target="_blank" rel="noopener" title="Open in Azure DevOps">
@@ -735,12 +1278,16 @@
 
       addUserMessage(question);
       const processingEl = addProcessingIndicator();
+      const sourceTypes = _sourceTypesHint.slice();
+      _sourceTypesHint = [];   // clear after capture
 
       try {
+        const reqBody = { question };
+        if (sourceTypes.length) reqBody.source_types = sourceTypes;
         const res = await fetch('/api/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question }),
+          body: JSON.stringify(reqBody),
         });
 
         if (!res.ok) {

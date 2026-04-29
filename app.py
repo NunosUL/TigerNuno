@@ -46,6 +46,11 @@ async def about():
     return Path("static/about.html").read_text(encoding="utf-8")
 
 
+@app.get("/about/diffs", response_class=HTMLResponse)
+async def about_diffs():
+    return Path("static/about-diffs.html").read_text(encoding="utf-8")
+
+
 @app.get("/chat/about", response_class=HTMLResponse)
 async def chat_about():
     return Path("static/chat-about.html").read_text(encoding="utf-8")
@@ -71,16 +76,19 @@ async def ingest_stream(
     wiki:  bool = True,
     code:  bool = True,
     tests: bool = True,
+    work_items: bool = True,
     repos:   str = "",  # comma-separated repo names
     plans:   str = "",  # comma-separated plan IDs
     suites:  str = "",  # comma-separated suite IDs
     tcs:     str = "",  # comma-separated test case IDs
+    areas:   str = "",  # comma-separated area paths
 ):
     """Server-Sent Events endpoint — streams pipeline progress to the browser."""
-    selected_repos     = [r.strip() for r in repos.split(",")  if r.strip()] if repos  else []
-    selected_plan_ids  = [int(x)   for x in plans.split(",")  if x.strip()] if plans  else []
-    selected_suite_ids = [int(x)   for x in suites.split(",") if x.strip()] if suites else []
-    selected_tc_ids    = [int(x)   for x in tcs.split(",")    if x.strip()] if tcs    else []
+    selected_repos       = [r.strip() for r in repos.split(",")  if r.strip()] if repos  else []
+    selected_plan_ids    = [int(x)   for x in plans.split(",")  if x.strip()] if plans  else []
+    selected_suite_ids   = [int(x)   for x in suites.split(",") if x.strip()] if suites else []
+    selected_tc_ids      = [int(x)   for x in tcs.split(",")    if x.strip()] if tcs    else []
+    selected_area_paths  = [a.strip() for a in areas.split(",") if a.strip()] if areas  else []
 
     def generate():
         for event in run_pipeline(
@@ -88,10 +96,12 @@ async def ingest_stream(
             crawl_wiki=wiki,
             crawl_code=code,
             crawl_tests=tests,
+            crawl_work_items=work_items,
             selected_repos=selected_repos,
             selected_plan_ids=selected_plan_ids   or None,
             selected_suite_ids=selected_suite_ids or None,
             selected_tc_ids=selected_tc_ids       or None,
+            selected_area_paths=selected_area_paths or None,
         ):
             yield f"data: {json.dumps(event)}\n\n"
         yield "data: {\"step\": \"__done__\"}\n\n"
@@ -109,6 +119,112 @@ async def ingest_stream(
 # ---------------------------------------------------------------------------
 # Index diagnostics
 # ---------------------------------------------------------------------------
+
+@app.get("/api/areas")
+async def list_areas():
+    """Returns the full area tree for the project as a flat list with depth info."""
+    from ingest import ORG, PROJECT, _API_BASE, _API_VERSION, _HEADERS
+    try:
+        r = req.get(
+            f"https://dev.azure.com/{ORG}/{PROJECT}/_apis/wit/classificationnodes/areas",
+            headers=_HEADERS,
+            params={"api-version": _API_VERSION, "$depth": 10},
+        )
+        r.raise_for_status()
+        nodes: list[dict] = []
+
+        def walk(node: dict, depth: int = 0, parent_path: str = "") -> None:
+            name = node.get("name", "")
+            path = f"{parent_path}\\{name}" if parent_path else name
+            nodes.append({"path": path, "name": name, "depth": depth})
+            for child in node.get("children", []):
+                walk(child, depth + 1, path)
+
+        walk(r.json())
+        return {"areas": nodes}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/areas/counts")
+async def area_work_item_counts(areas: str = ""):
+    """Returns work item counts broken down by type for the given area paths.
+    areas = comma-separated area path strings, e.g. "NetProjects10\\WercsSmart\\Retail"
+    Each type is queried in parallel to stay under the 20 000-item WIQL limit.
+    Returns truncated=True per type when the result hits the 20K hard limit.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed as cf_completed
+    from ingest import _API_BASE, _API_VERSION, _HEADERS, _WI_TYPES
+
+    raw = [a.strip() for a in (areas or "").split(",") if a.strip()]
+
+    # Server-side minimal cover: remove any path already covered by an ancestor.
+    # The UI does this too, but defend against direct API calls with redundant paths.
+    raw_sorted = sorted(raw, key=len)
+    selected: list[str] = []
+    for path in raw_sorted:
+        if not any(path == p or path.startswith(p + "\\") for p in selected):
+            selected.append(path)
+
+    area_clause = ""
+    if selected:
+        area_parts = " OR ".join(f"[System.AreaPath] UNDER '{p}'" for p in selected)
+        area_clause = f" AND ({area_parts})"
+
+    # Returns (wi_type, count, is_truncated)
+    def count_type(wi_type: str) -> tuple[str, int, bool]:
+        wiql = {
+            "query": (
+                f"SELECT [System.Id] FROM WorkItems "
+                f"WHERE [System.WorkItemType] = '{wi_type}'{area_clause} "
+                f"ORDER BY [System.Id]"
+            )
+        }
+        try:
+            r = req.post(
+                f"{_API_BASE}/wit/wiql?api-version={_API_VERSION}&$top=20000",
+                headers=_HEADERS,
+                json=wiql,
+            )
+            if not r.ok:
+                try:
+                    msg = r.json().get("message", "")
+                except Exception:
+                    msg = r.text[:300]
+                # VS402337 = Azure DevOps 20K hard limit
+                if "VS402337" in msg or "20000" in msg:
+                    return wi_type, 20000, True
+                return wi_type, 0, False
+            items = r.json().get("workItems", [])
+            # If we got exactly 20K, we may have hit the limit without an error response
+            truncated = len(items) >= 20000
+            return wi_type, len(items), truncated
+        except Exception:
+            return wi_type, 0, False
+
+    try:
+        counts: dict[str, int] = {}
+        truncated: dict[str, bool] = {}
+        with ThreadPoolExecutor(max_workers=len(_WI_TYPES)) as pool:
+            futs = {pool.submit(count_type, t): t for t in _WI_TYPES}
+            for fut in cf_completed(futs):
+                wi_type, n, trunc = fut.result()
+                counts[wi_type] = n
+                truncated[wi_type] = trunc
+        # Return in canonical order
+        ordered = {t: counts.get(t, 0) for t in _WI_TYPES}
+        trunc_ordered = {t: truncated.get(t, False) for t in _WI_TYPES}
+        total = sum(ordered.values())
+        total_truncated = any(trunc_ordered.values())
+        return {
+            "counts": ordered,
+            "truncated": trunc_ordered,
+            "total": total,
+            "total_truncated": total_truncated,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/repos")
 async def list_repos():
@@ -359,6 +475,218 @@ async def debug_tc(tc_id: int):
             "index_chunks": index_chunks, "devops": devops}
 
 
+@app.get("/api/debug/wi/{wi_id}")
+async def debug_wi(wi_id: int):
+    """Diagnostic: shows indexed chunks, raw relations, and ArtifactLink regex results for one WI.
+    Open in browser: /api/debug/wi/301827
+    """
+    import re
+    from azure.search.documents import SearchClient
+    from azure.core.credentials import AzureKeyCredential
+    from query import SEARCH_ENDPOINT, SEARCH_INDEX_NAME, SEARCH_API_KEY
+    from ingest import _API_BASE, _API_VERSION, _HEADERS
+
+    # ── 1. What is in the search index for this WI? ──────────────────────────
+    sha_re = re.compile(r'\*sha:([0-9a-f]{40})\*', re.IGNORECASE)
+    index_chunks: list[dict] = []
+    found_shas: list[str] = []
+    try:
+        sc = SearchClient(SEARCH_ENDPOINT, SEARCH_INDEX_NAME, AzureKeyCredential(SEARCH_API_KEY))
+        for r in sc.search(search_text="*", filter=f"path eq '/work-items/{wi_id}'",
+                           select=["id", "text"], top=50):
+            text = r["text"]
+            shas = sha_re.findall(text)
+            found_shas.extend(shas)
+            index_chunks.append({
+                "id":      r["id"],
+                "chars":   len(text),
+                "has_commits_header": "## Git Commits" in text,
+                "sha_markers": shas,
+                "preview": text[:400],
+            })
+    except Exception as e:
+        index_chunks = [{"error": str(e)}]
+
+    # ── 1b. Check whether diff docs exist for the SHAs found in WI chunks ────
+    diff_docs: list[dict] = []
+    for sha in list(dict.fromkeys(found_shas))[:10]:   # unique, preserve order, cap at 10
+        try:
+            hits = list(sc.search(search_text="*", filter=f"path eq '/commit-diffs/{sha}'",
+                                  select=["id", "text", "path"], top=5))
+            if hits:
+                diff_docs.append({"sha": sha[:7], "chunk_count": len(hits), "preview": hits[0]["text"][:300]})
+            else:
+                diff_docs.append({"sha": sha[:7], "chunk_count": 0, "note": "NOT IN INDEX"})
+        except Exception as e:
+            diff_docs.append({"sha": sha[:7], "error": str(e)})
+
+    # ── 2. Raw Azure DevOps data — relations and ArtifactLinks ───────────────
+    artifact_links: list[dict] = []
+    wi_meta: dict = {}
+    try:
+        r = req.get(f"{_API_BASE}/wit/workitems/{wi_id}",
+                    headers=_HEADERS,
+                    params={"$expand": "all", "api-version": _API_VERSION})
+        if r.ok:
+            data = r.json()
+            fields = data.get("fields", {})
+            wi_meta = {
+                "title":    fields.get("System.Title"),
+                "type":     fields.get("System.WorkItemType"),
+                "state":    fields.get("System.State"),
+                "relation_count": len(data.get("relations") or []),
+            }
+            import urllib.parse as _urlparse
+            commit_re = re.compile(
+                r"vstfs:///Git/Commit/(?:[^/]+/)?([^/]+)/([a-fA-F0-9]{40})",
+                re.IGNORECASE
+            )
+            for rel in (data.get("relations") or []):
+                rel_type = rel.get("rel", "")
+                raw_url  = rel.get("url", "")
+                url      = _urlparse.unquote(raw_url.strip().rstrip("\x00"))
+                entry = {
+                    "rel":         rel_type,
+                    "raw_url":     repr(raw_url),
+                    "decoded_url": url,
+                }
+                if rel_type == "ArtifactLink":
+                    m = commit_re.match(url)
+                    entry["regex_match"] = bool(m)
+                    if m:
+                        entry["repo_id"]   = m.group(1)
+                        entry["commit_id"] = m.group(2)
+                artifact_links.append(entry)
+        else:
+            wi_meta = {"http_error": r.status_code, "detail": r.text[:300]}
+    except Exception as e:
+        wi_meta = {"error": str(e)}
+
+    return {
+        "wi_id":          wi_id,
+        "chunk_count":    len(index_chunks),
+        "index_chunks":   index_chunks,
+        "diff_docs":      diff_docs,
+        "wi_meta":        wi_meta,
+        "artifact_links": artifact_links,
+    }
+
+
+@app.get("/api/debug/wi/{wi_id}/dev-info")
+async def debug_wi_dev_info(wi_id: int):
+    """Step-by-step trace of every commit-resolution stage for a work item.
+
+    Open in browser: /api/debug/wi/301827/dev-info
+    """
+    import re as _re
+    import urllib.parse as _urlparse
+    import requests as _requests
+    from ingest import _API_BASE, _HEADERS, _API_VERSION
+
+    trace: list[dict] = []
+
+    # Step 1 — fetch WI individually with $expand=all
+    try:
+        r = _requests.get(
+            f"{_API_BASE}/wit/workitems/{wi_id}",
+            headers=_HEADERS,
+            params={"$expand": "all", "api-version": _API_VERSION},
+            timeout=15,
+        )
+        trace.append({"step": "fetch_wi", "http_status": r.status_code, "ok": r.ok})
+        if not r.ok:
+            return {"wi_id": wi_id, "trace": trace, "error": f"WI fetch HTTP {r.status_code}"}
+        relations = r.json().get("relations") or []
+        artifact_links = [rel for rel in relations if rel.get("rel") == "ArtifactLink"]
+        trace.append({
+            "step": "relations",
+            "total_relations": len(relations),
+            "artifact_link_count": len(artifact_links),
+        })
+    except Exception as e:
+        return {"wi_id": wi_id, "trace": trace, "error": f"WI fetch exception: {e}"}
+
+    # Step 2 — regex-match each ArtifactLink
+    commit_re = _re.compile(
+        r"vstfs:///Git/Commit/(?:[^/]+/)?([^/]+)/([a-fA-F0-9]{40})", _re.IGNORECASE
+    )
+    commit_candidates: list[dict] = []
+    for rel in artifact_links:
+        raw = rel.get("url", "").strip().rstrip("\x00")
+        url = _urlparse.unquote(raw)
+        m = commit_re.match(url)
+        entry = {"raw_url": raw, "decoded_url": url, "regex_match": bool(m)}
+        if m:
+            entry["repo_id"]   = m.group(1)
+            entry["commit_id"] = m.group(2).lower()
+            commit_candidates.append(entry)
+        trace.append({"step": "regex", **entry})
+
+    trace.append({"step": "commit_candidates", "count": len(commit_candidates)})
+
+    # Step 3 — for each matched commit, fetch its metadata and changes
+    commit_results: list[dict] = []
+    for c in commit_candidates:
+        repo_id   = c["repo_id"]
+        commit_id = c["commit_id"]
+        result: dict = {"commit_id": commit_id[:7], "commit_id_full": commit_id, "repo_id": repo_id}
+        try:
+            cr = _requests.get(
+                f"{_API_BASE}/git/repositories/{repo_id}/commits/{commit_id}",
+                headers=_HEADERS,
+                params={"api-version": _API_VERSION},
+                timeout=15,
+            )
+            result["commit_http_status"] = cr.status_code
+            result["commit_ok"] = cr.ok
+            if cr.ok:
+                c_data = cr.json()
+                result["message"] = (c_data.get("comment") or "").splitlines()[0] if c_data.get("comment") else ""
+                result["author"]  = (c_data.get("author") or {}).get("name", "")
+                result["date"]    = ((c_data.get("author") or {}).get("date") or "")[:10]
+                parents = c_data.get("parents") or []
+                result["parent_count"] = len(parents)
+                # Parents may be plain SHA strings or dicts — handle both
+                p0 = parents[0] if parents else None
+                result["parent_id"] = (p0.get("objectId") or p0.get("commitId") if isinstance(p0, dict) else str(p0 or ""))
+            else:
+                result["commit_error_body"] = cr.text[:300]
+        except Exception as e:
+            result["commit_exception"] = str(e)
+
+        try:
+            chg_r = _requests.get(
+                f"{_API_BASE}/git/repositories/{repo_id}/commits/{commit_id}/changes",
+                headers=_HEADERS,
+                params={"api-version": _API_VERSION},
+                timeout=15,
+            )
+            result["changes_http_status"] = chg_r.status_code
+            result["changes_ok"] = chg_r.ok
+            if chg_r.ok:
+                changes = chg_r.json().get("changes", [])
+                result["file_count"] = len(changes)
+                result["files"] = [
+                    {"path": ch.get("item", {}).get("path"), "type": ch.get("changeType")}
+                    for ch in changes[:20]
+                ]
+            else:
+                result["changes_error_body"] = chg_r.text[:300]
+        except Exception as e:
+            result["changes_exception"] = str(e)
+
+        commit_results.append(result)
+        trace.append({"step": "commit_detail", **result})
+
+    return {
+        "wi_id":            wi_id,
+        "commit_count":     len(commit_candidates),
+        "commits_fetched":  sum(1 for c in commit_results if c.get("commit_ok")),
+        "trace":            trace,
+        "commit_results":   commit_results,
+    }
+
+
 @app.delete("/api/manifest")
 async def clear_manifest():
     """Deletes the hash manifest blob so the next run re-indexes everything from scratch."""
@@ -371,6 +699,23 @@ async def clear_manifest():
         return {"cleared": True}
     except ResourceNotFoundError:
         return {"cleared": True, "note": "manifest was already absent"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/api/snapshot")
+async def delete_snapshot():
+    """Deletes the crawl snapshot JSONL blob so the next crawl=OFF run has no data to load."""
+    from azure.storage.blob import BlobServiceClient
+    from azure.core.exceptions import ResourceNotFoundError
+    from ingest import STORAGE_CONN, CONTAINER, ORG, PROJECT
+    blob_name = f"rag_{ORG}_{PROJECT}.jsonl"
+    try:
+        client = BlobServiceClient.from_connection_string(STORAGE_CONN)
+        client.get_blob_client(container=CONTAINER, blob=blob_name).delete_blob()
+        return {"deleted": True, "blob": blob_name}
+    except ResourceNotFoundError:
+        return {"deleted": True, "note": "snapshot was already absent", "blob": blob_name}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -393,15 +738,17 @@ async def index_stats():
         return r.get_count()
 
     try:
-        total = count()
-        code  = count("path ge '/repos/' and path lt '/repos~'")
-        tests = count("path ge '/test-cases/' and path lt '/test-cases~'")
-        wiki  = total - code - tests
+        total      = count()
+        code       = count("path ge '/repos/' and path lt '/repos~'")
+        tests      = count("path ge '/test-cases/' and path lt '/test-cases~'")
+        work_items = count("path ge '/work-items/' and path lt '/work-items~'")
+        wiki       = total - code - tests - work_items
         return {
             "total":      total,
             "wiki":       wiki,
             "code":       code,
             "test_cases": tests,
+            "work_items": work_items,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -412,7 +759,8 @@ async def index_stats():
 # ---------------------------------------------------------------------------
 
 class ChatRequest(BaseModel):
-    question: str
+    question:     str
+    source_types: list[str] = []
 
 
 @app.post("/api/chat")
@@ -420,7 +768,8 @@ async def chat_endpoint(req: ChatRequest):
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
     try:
-        result = answer_question(req.question)
+        result = answer_question(req.question,
+                                source_types=req.source_types or None)
         return {
             "answer": result.answer,
             "sources": result.sources,
@@ -438,7 +787,8 @@ async def chat_stream_endpoint(req: ChatRequest):
 
     def generate():
         try:
-            for event in answer_question_stream(req.question):
+            for event in answer_question_stream(req.question,
+                                                source_types=req.source_types or None):
                 yield f"data: {json.dumps(event)}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'detail': str(e)})}\n\n"

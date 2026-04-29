@@ -18,6 +18,11 @@
       --accent-glow: rgba(47, 129, 247, 0.15);
       --success: #3fb950;
       --error: #f85149;
+      --purple: #a371f7;
+      --purple-glow: rgba(163,113,247,0.12);
+      --orange: #f0883e;
+      --orange-glow: rgba(240,136,62,0.12);
+      --teal: #39c5cf;
     }
 
     body {
@@ -64,7 +69,7 @@
       display: flex;
       align-items: center;
       gap: 0;
-      margin-bottom: 3rem;
+      margin-bottom: 1rem;
       overflow-x: auto;
       padding-bottom: 0.5rem;
     }
@@ -72,24 +77,24 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.35rem;
       flex-shrink: 0;
     }
     .arch-box {
       background: var(--surface2);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 0.6rem 1rem;
-      font-size: 0.78rem;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.76rem;
       font-weight: 600;
       color: var(--text);
       text-align: center;
       white-space: nowrap;
     }
-    .arch-box.azure { border-color: #0078d4; color: #5ba0e8; background: rgba(0,120,212,0.08); }
+    .arch-box.azure  { border-color: #0078d4; color: #5ba0e8; background: rgba(0,120,212,0.08); }
     .arch-box.python { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
     .arch-box.search { border-color: var(--success); color: var(--success); background: rgba(63,185,80,0.08); }
-    .arch-sub { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .arch-sub { font-size: 0.63rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; }
     .arch-arrow {
       font-size: 1rem;
       color: var(--border);
@@ -126,7 +131,8 @@
     }
     .step-body { min-width: 0; }
     .step-body h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 0.35rem; }
-    .step-body p { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
+    .step-body p  { font-size: 0.85rem; color: var(--muted); line-height: 1.6; margin-bottom: 0.5rem; }
+    .step-body p:last-child { margin-bottom: 0; }
     .step-body .tag {
       display: inline-block;
       font-size: 0.7rem;
@@ -137,11 +143,42 @@
       border: 1px solid var(--border);
       color: var(--muted);
     }
-    .tag.azure { border-color: #0078d4; color: #5ba0e8; }
+    .tag.azure  { border-color: #0078d4; color: #5ba0e8; }
     .tag.python { border-color: var(--accent); color: var(--accent); }
-    .tag.green { border-color: var(--success); color: var(--success); }
+    .tag.green  { border-color: var(--success); color: var(--success); }
+    .tag.orange { border-color: var(--orange); color: var(--orange); }
+    .tag.purple { border-color: var(--purple); color: var(--purple); }
 
-    /* ── Change detection ── */
+    .source-list {
+      margin: 0.6rem 0 0.6rem 1.25rem;
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.9;
+    }
+
+    /* ── Deep dive callout ── */
+    .deep-dive {
+      background: linear-gradient(135deg, rgba(163,113,247,0.07), rgba(47,129,247,0.07));
+      border: 1px solid rgba(163,113,247,0.5);
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.9rem;
+    }
+    .deep-dive-icon { font-size: 1.4rem; flex-shrink: 0; }
+    .deep-dive-body p { font-size: 0.8rem; color: var(--muted); line-height: 1.5; margin-bottom: 0.3rem !important; }
+    .deep-dive-body a {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--purple);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .deep-dive-body a:hover { color: var(--accent); }
+
+    /* ── Section title ── */
     .section-title {
       font-size: 0.75rem;
       text-transform: uppercase;
@@ -158,23 +195,13 @@
       margin-bottom: 3rem;
     }
     .detail-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem; }
-    .detail-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-bottom: 0.75rem; }
+    .detail-card p  { font-size: 0.85rem; color: var(--muted); line-height: 1.7; margin-bottom: 0.75rem; }
     .detail-card p:last-child { margin-bottom: 0; }
 
-    .flow {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      margin-top: 1rem;
-    }
-    .flow-row {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      font-size: 0.82rem;
-    }
-    .flow-icon { font-size: 1rem; flex-shrink: 0; width: 1.5rem; text-align: center; }
-    .flow-text { color: var(--muted); }
+    .flow { display: flex; flex-direction: column; gap: 0.55rem; margin-top: 1rem; }
+    .flow-row { display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.82rem; }
+    .flow-icon { font-size: 1rem; flex-shrink: 0; width: 1.5rem; text-align: center; padding-top: 0.1rem; }
+    .flow-text { color: var(--muted); line-height: 1.55; }
     .flow-text strong { color: var(--text); }
 
     code {
@@ -189,7 +216,7 @@
 
     /* ── Payload examples ── */
     .payload {
-      margin-top: 1rem;
+      margin-top: 0.9rem;
       border-radius: 8px;
       overflow: hidden;
       border: 1px solid var(--border);
@@ -228,18 +255,21 @@
 
     <div class="header">
       <h1>How It Works</h1>
-      <p>A fully automated RAG ingestion pipeline that crawls three Azure DevOps sources —
-         Wiki pages, Git repository code files, and Test Management cases — then chunks,
-         embeds, and indexes all content into Azure AI Search for retrieval-augmented generation.</p>
+      <p>A fully automated RAG ingestion pipeline that crawls <strong style="color:var(--text)">five Azure DevOps
+         sources</strong> — Wiki pages, Git repository code files, Test Management cases, Work Items
+         (Epics, Features, User Stories, Tasks &amp; Bugs), and linked Commit Diffs — then chunks, embeds,
+         and indexes all content into Azure AI Search for retrieval-augmented generation.</p>
     </div>
 
     <!-- Architecture diagram -->
     <p class="section-title">Architecture</p>
     <div class="arch">
       <div class="arch-node" style="gap:0.3rem;">
-        <div class="arch-box azure" style="font-size:0.7rem;">Wiki Pages</div>
-        <div class="arch-box azure" style="font-size:0.7rem;">Code Files</div>
-        <div class="arch-box azure" style="font-size:0.7rem;">Test Cases</div>
+        <div class="arch-box azure" style="font-size:0.7rem;">📄 Wiki Pages</div>
+        <div class="arch-box azure" style="font-size:0.7rem;">💻 Code Files</div>
+        <div class="arch-box azure" style="font-size:0.7rem;">🧪 Test Cases</div>
+        <div class="arch-box azure" style="font-size:0.7rem;">📋 Work Items</div>
+        <div class="arch-box azure" style="font-size:0.7rem;">🔀 Commit Diffs</div>
         <div class="arch-sub">azure devops</div>
       </div>
       <div class="arch-arrow">→</div>
@@ -263,121 +293,176 @@
         <div class="arch-sub">ai search</div>
       </div>
     </div>
-    <p style="font-size:0.75rem;color:var(--muted);margin-bottom:2.5rem;">
-      Blob Storage is used for two things: a fixed-name JSONL snapshot (<code>wiki_ORG_PROJECT.jsonl</code>)
-      is overwritten on each crawl run, and a hash manifest (<code>wiki_hashes.json</code>) tracks which
-      records have changed between runs to avoid re-embedding unchanged content.
+    <p style="font-size:0.78rem;color:var(--muted);margin-bottom:2.5rem;line-height:1.6;">
+      Blob Storage holds two things: a <code>wiki_ORG_PROJECT.jsonl</code> snapshot overwritten on each crawl,
+      and a <code>wiki_hashes.json</code> manifest that tracks which records have changed to avoid
+      re-embedding unchanged content. Path prefixes guarantee no collisions across sources:
+      <code>/wiki/…</code> · <code>/repos/…</code> · <code>/test-cases/…</code> · <code>/work-items/…</code> · <code>/commit-diffs/…</code>
     </p>
 
     <!-- Steps -->
     <p class="section-title">Pipeline Steps</p>
     <div class="steps">
 
+      <!-- ── Step 1: Crawl ── -->
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-body">
           <h3>Crawl</h3>
-          <p>Connects to Azure DevOps using a PAT token and collects records from up to three
-             sources — each controlled by an environment toggle:</p>
-          <ul style="margin:0.6rem 0 0.6rem 1.2rem;font-size:0.88rem;color:var(--muted);line-height:1.8;">
-            <li><strong style="color:var(--text);">Wiki pages</strong> — lists all pages recursively
-              (<code>recursionLevel=full</code>), fetches each page's Markdown, converts to HTML,
-              and extracts links.</li>
-            <li><strong style="color:var(--text);">Code files</strong> — enumerates every Git repository,
-              walks the file tree (paginated via <code>x-ms-continuationtoken</code>), downloads
-              files up to 100 KB, skips binaries, lock files, migrations, and auto-generated code.</li>
-            <li><strong style="color:var(--text);">Test cases</strong> — traverses all Test Plans and
-              Suites, deduplicates work items, and formats each test case as structured Markdown with
-              a steps table, plan/suite context, and tags — enabling queries like
-              <em>"what test cases cover Onboarding?"</em></li>
+          <p>Connects to Azure DevOps using a PAT token and collects records from up to five
+             sources — each controlled by an environment toggle and a UI selector:</p>
+          <ul class="source-list">
+            <li><strong style="color:var(--text);">📄 Wiki pages</strong> — lists all pages recursively
+              across all project and code wikis, fetches each page's Markdown plus its inline discussion
+              comments, converts to HTML, and extracts links.</li>
+            <li><strong style="color:var(--text);">💻 Code files</strong> — enumerates every Git
+              repository, walks the file tree (paginated via <code>x-ms-continuationtoken</code>),
+              downloads files up to 100 KB, skips binaries, lock files, migrations, and
+              auto-generated code. Supports selective crawl by repository name.</li>
+            <li><strong style="color:var(--text);">🧪 Test cases</strong> — traverses all Test Plans and
+              Suites, deduplicates work items by ID across plans, resolves Shared Step references inline,
+              and formats each test case as structured Markdown with a steps table, plan/suite context,
+              discussion comments, and tags.</li>
+            <li><strong style="color:var(--text);">📋 Work Items</strong> — fetches Epics, Features,
+              User Stories, Tasks, and Bugs via per-type WIQL queries (one per type to stay under the
+              20,000-item limit). Each record includes description, acceptance criteria, repro steps,
+              linked work items (parent/children/related), discussion comments, code attachments,
+              and area-path / iteration metadata. Supports selective crawl by area path tree.</li>
+            <li><strong style="color:var(--text);">🔀 Commit Diffs</strong> — automatically triggered for
+              Bugs and Tasks that have linked git commits (via <code>ArtifactLink</code> relations).
+              For each linked commit SHA, fetches the changed files at both commit and parent SHA,
+              then generates a unified diff using Python's <code>difflib</code>.
+              NuGet package changes in <code>.csproj</code> files are extracted into a before/after table.
+              Stored at <code>/commit-diffs/{sha}</code> — one document per unique commit SHA,
+              deduplicated across all work items.<br>
+              <a href="/about/diffs" style="color:var(--purple);font-size:0.8rem;font-weight:600;">→ Deep dive: Commit Diff Pipeline</a></li>
           </ul>
           <p>All records share the same <code>{path, remote_url, html, markdown, links, crawled_at}</code>
-             shape and are written as a single <code>.jsonl</code> blob in Azure Blob Storage
-             (always the same filename — no timestamp suffix — so each run overwrites the previous snapshot).
-             Any item that fails to fetch is logged and skipped without stopping the run.</p>
+             shape and are saved as a single JSONL blob. Discussion threads are fetched in parallel
+             (8 workers). Any item that fails is logged and skipped without stopping the run.</p>
           <span class="tag azure">Azure DevOps REST API</span>
           <span class="tag azure">Azure Blob Storage</span>
+          <span class="tag orange">Work Items</span>
+          <span class="tag purple">Commit Diffs</span>
+
           <div class="payload">
-            <div class="payload-label">📄 wiki record · path prefix: /Documentation/…</div>
+            <div class="payload-label">📄 wiki record · path prefix: /wiki/&lt;WikiName&gt;/…</div>
             <pre>{
-  <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
-  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
-  <span class="jk">"markdown"</span>: <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`..."</span>,
-  <span class="jk">"html"</span>: <span class="js">"&lt;h1&gt;Setup Guide&lt;/h1&gt;&lt;p&gt;To install the project, run ...&lt;/p&gt;"</span>,
-  <span class="jk">"links"</span>: [<span class="js">"/Documentation/Prerequisites"</span>, <span class="js">"/Guides/Deploy"</span>],
-  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
+  <span class="jk">"path"</span>:       <span class="js">"/wiki/WERCSmart.Wiki/Processing-Report"</span>,
+  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/ulpsi/NetProjects10/_wiki/wikis/WERCSmart.Wiki/5/Processing-Report"</span>,
+  <span class="jk">"markdown"</span>:   <span class="js">"# Processing Report\n\nThis report shows..."</span>,
+  <span class="jk">"links"</span>:      [<span class="js">"/wiki/WERCSmart.Wiki/Setup"</span>],
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-26T14:22:10Z"</span>
 }</pre>
           </div>
+
           <div class="payload" style="margin-top:0.6rem;">
             <div class="payload-label">💻 code record · path prefix: /repos/{repo}/…</div>
             <pre>{
-  <span class="jk">"path"</span>: <span class="js">"/repos/MyApp/src/Services/PaymentService.cs"</span>,
-  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_git/MyApp?path=/src/Services/PaymentService.cs"</span>,
-  <span class="jk">"markdown"</span>: <span class="js">"public class PaymentService : IPaymentService\n{\n    public async Task&lt;Result&gt; ProcessAsync(..."</span>,
-  <span class="jk">"html"</span>: <span class="js">"&lt;pre&gt;&lt;code class=\"language-cs\"&gt;public class PaymentService...&lt;/code&gt;&lt;/pre&gt;"</span>,
-  <span class="jk">"links"</span>: [],
-  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
+  <span class="jk">"path"</span>:       <span class="js">"/repos/WERCSmart/src/Services/MarketplaceService.cs"</span>,
+  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/ulpsi/NetProjects10/_git/WERCSmart?path=/src/Services/MarketplaceService.cs"</span>,
+  <span class="jk">"markdown"</span>:   <span class="js">"public class MarketplaceService : IMarketplaceService\n{\n    private readonly bool _isMarketPlaceClient;..."</span>,
+  <span class="jk">"html"</span>:       <span class="js">"&lt;pre&gt;&lt;code class=\"language-cs\"&gt;...&lt;/code&gt;&lt;/pre&gt;"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-26T14:22:10Z"</span>
 }<span class="jc">  // files &gt;100 KB, binaries, lock files, and auto-generated code are skipped</span></pre>
           </div>
+
           <div class="payload" style="margin-top:0.6rem;">
             <div class="payload-label">🧪 test case record · path prefix: /test-cases/{id}</div>
             <pre>{
-  <span class="jk">"path"</span>: <span class="js">"/test-cases/12345"</span>,
-  <span class="jk">"remote_url"</span>: <span class="js">"https://dev.azure.com/org/project/_workitems/edit/12345"</span>,
-  <span class="jk">"markdown"</span>: <span class="js">"# Test Case: Onboarding - New User Registration\n\n**ID:** 12345 | **Plan:** Sprint 12\n\n## Test Steps\n| Step | Action | Expected Result |\n|------|--------|-----------------|\n| 1 | Navigate to /register | Registration form is displayed |..."</span>,
-  <span class="jk">"html"</span>: <span class="js">"&lt;h1&gt;Test Case: Onboarding...&lt;/h1&gt;&lt;table&gt;...&lt;/table&gt;"</span>,
-  <span class="jk">"links"</span>: [],
-  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
-}<span class="jc">  // test cases are deduplicated by work item ID across all plans and suites</span></pre>
+  <span class="jk">"path"</span>:     <span class="js">"/test-cases/296199"</span>,
+  <span class="jk">"markdown"</span>: <span class="js">"# Test Case: isMarketPlaceClient set to true\n\n**ID:** 296199 | **Plan:** Sprint 87 | **Suite:** Marketplace\n\n## Test Steps\n| Step | Action | Expected Result |\n|------|--------|-----------------|\n| 1 | Set isMarketPlaceClient = true | Feature flag enabled |"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-26T14:22:10Z"</span>
+}<span class="jc">  // deduplicated by work item ID across all plans and suites</span></pre>
+          </div>
+
+          <div class="payload" style="margin-top:0.6rem;">
+            <div class="payload-label">📋 work item record · path prefix: /work-items/{id}</div>
+            <pre>{
+  <span class="jk">"path"</span>:     <span class="js">"/work-items/301701"</span>,
+  <span class="jk">"markdown"</span>: <span class="js">"# User Story: Marketplace Client Support\n\n**ID:** 301701 | **State:** Active\n**Area Path:** WERCSmart\\Marketplace\n\n## Description\n\nAs a marketplace client, I need...\n\n## Git Commits\n\n### **a1b2c3d** — \"Upgrade packages to .NET 10\"\n*sha:a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2*\n| edit | /WERCSmart.DataAccess/UL.Wercsmart.DataAccess.csproj |"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-26T14:22:10Z"</span>
+}<span class="jc">  // note the *sha:40-char-hex* marker — query.py uses this to look up the commit diff doc</span></pre>
+          </div>
+
+          <div class="payload" style="margin-top:0.6rem;">
+            <div class="payload-label">🔀 commit diff record · path prefix: /commit-diffs/{sha}</div>
+            <pre>{
+  <span class="jk">"path"</span>:     <span class="js">"/commit-diffs/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"</span>,
+  <span class="jk">"markdown"</span>: <span class="js">"# Commit a1b2c3d\n*sha:a1b2c3d4e5f6a1b2...*\n**Message:** Upgrade packages to .NET 10\n**Author:** Dev Name | **Date:** 2026-04-20\n\n## Changed Files\n\n### `WERCSmart.DataAccess.csproj` — edit\n\n| Package | Before | After |\n|---------|--------|-------|\n| TargetFramework | `net8.0` | `net10.0` |\n\n```diff\n-  &lt;TargetFramework&gt;net8.0&lt;/TargetFramework&gt;\n+  &lt;TargetFramework&gt;net10.0&lt;/TargetFramework&gt;\n```"</span>,
+  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-26T14:22:10Z"</span>
+}<span class="jc">  // immutable: diff is between commit SHA and parent SHA — identical on every re-run</span></pre>
+          </div>
+
+          <div class="deep-dive">
+            <div class="deep-dive-icon">🔀</div>
+            <div class="deep-dive-body">
+              <p>The Commit Diff pipeline — from ArtifactLink decoding to diff generation and query-time retrieval — is a multi-step flow that powers the PFQ (Product Feature Questionnaire) answers.</p>
+              <a href="/about/diffs">Explore the Commit Diff Pipeline in depth →</a>
+            </div>
           </div>
         </div>
       </div>
 
+      <!-- ── Step 2: Chunk ── -->
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-body">
           <h3>Chunk</h3>
-          <p>Each page's Markdown is split into overlapping chunks using LangChain's
+          <p>Each record's Markdown is split into overlapping chunks using LangChain's
              <code>RecursiveCharacterTextSplitter</code>. The splitter respects heading
-             boundaries (<code>##</code>, <code>###</code>) before falling back to paragraph
-             and sentence breaks. Chunk size is 1000 characters with 150-character overlap to
-             preserve context at boundaries. Only pages whose content has changed since the
-             last run are chunked (see change detection below).</p>
+             boundaries (<code>## </code>, <code>### </code>) before falling back to paragraph
+             and sentence breaks. Chunk size is <strong style="color:var(--text)">1,000 characters</strong>
+             with a <strong style="color:var(--text)">150-character overlap</strong> to preserve
+             context at boundaries.</p>
+          <p>For test cases, a short identity prefix (<code>Test Case {id} · {title}</code>) is
+             prepended to every non-first chunk so each chunk remains discoverable by TC ID or title
+             even after splitting. Chunking runs across <strong style="color:var(--text)">8 parallel
+             workers</strong> for speed. Only records whose MD5 hash has changed are chunked.</p>
           <span class="tag python">LangChain</span>
+          <span class="tag">8 parallel workers</span>
           <div class="payload">
             <div class="payload-label">✂️ chunk record · after splitting · before embedding</div>
             <pre>{
-  <span class="jk">"id"</span>: <span class="jh">"documentation_setup__0"</span>,  <span class="jc">// "{safe_path}__{chunk_index}"</span>
-  <span class="jk">"text"</span>: <span class="js">"# Setup Guide\n\nTo install the project, run `npm install` from\nthe root directory. Ensure Node.js 18+ is installed before\nrunning the command.\n\n## Prerequisites\n\nThe following tools must be installed on your machine..."</span>,
-  <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
-  <span class="jk">"url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
-  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>
-  <span class="jc">// ~1000 chars of text  ·  no embedding yet — added in step 3</span>
+  <span class="jk">"id"</span>:          <span class="jh">"work_items_301701__0"</span>,   <span class="jc">// deterministic: "{safe_path}__{chunk_index}"</span>
+  <span class="jk">"text"</span>:        <span class="js">"# User Story: Marketplace Client Support\n\n**ID:** 301701\n**State:** Active\n..."</span>,
+  <span class="jk">"path"</span>:        <span class="js">"/work-items/301701"</span>,
+  <span class="jk">"url"</span>:         <span class="js">"https://dev.azure.com/ulpsi/NetProjects10/_workitems/edit/301701"</span>,
+  <span class="jk">"source_type"</span>: <span class="js">"workitem"</span>,
+  <span class="jk">"source_tags"</span>: [<span class="js">"workitem"</span>]
+  <span class="jc">// no "embedding" field yet — added by step 3</span>
 }</pre>
           </div>
         </div>
       </div>
 
+      <!-- ── Step 3: Embed ── -->
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-body">
           <h3>Embed</h3>
-          <p>Each chunk's text is sent to the Azure OpenAI embeddings API in batches of 100.
-             The <code>text-embedding-3-large</code> model produces a 3072-dimensional vector
-             that captures the semantic meaning of the text. These vectors are what enable
-             similarity search at query time.</p>
+          <p>Each chunk's text is sent to the Azure OpenAI embeddings API in batches of
+             <strong style="color:var(--text)">200 chunks</strong> using
+             <strong style="color:var(--text)">3 parallel workers</strong> with a 0.5 s
+             inter-batch delay to stay within the Azure OpenAI S0 quota (~60 RPM).
+             <code>text-embedding-3-large</code> produces a 3,072-dimensional vector capturing
+             semantic meaning. Rate-limit (429) errors trigger automatic retry with exponential
+             back-off honouring the API's <code>Retry-After</code> hint.</p>
+          <div style="margin-top:0.3rem;font-size:0.8rem;color:var(--muted);">
+            Tuning: set <code>EMBED_INTER_BATCH_DELAY_S=1.5</code> in <code>.env</code> to slow down
+            if you hit 429s; lower to <code>0.1</code> if your Azure quota is higher.
+          </div>
           <span class="tag azure">Azure OpenAI</span>
-          <span class="tag">text-embedding-3-large</span>
+          <span class="tag">text-embedding-3-large · 3072 dims</span>
+          <span class="tag">batch 200 · 3 workers</span>
           <div class="payload">
             <div class="payload-label">⚡ embedded chunk · 3072-dimensional vector added</div>
             <pre>{
-  <span class="jk">"id"</span>: <span class="js">"documentation_setup__0"</span>,
-  <span class="jk">"text"</span>: <span class="js">"# Setup Guide\n\nTo install the project, run `npm install`..."</span>,
-  <span class="jk">"path"</span>: <span class="js">"/Documentation/Setup"</span>,
-  <span class="jk">"url"</span>: <span class="js">"https://dev.azure.com/org/project/_wiki/wikis/project.wiki/5/Setup"</span>,
-  <span class="jk">"crawled_at"</span>: <span class="js">"2026-04-08T00:24:38Z"</span>,
-  <span class="jk">"embedding"</span>: [
-    <span class="jn">0.0234</span>, <span class="jn">-0.0891</span>, <span class="jn">0.1102</span>, <span class="jn">-0.0338</span>, <span class="jn">0.0567</span>, <span class="jn">-0.1245</span>, <span class="jn">0.0789</span>, <span class="jn">0.0423</span>,
+  <span class="jk">"id"</span>:          <span class="js">"work_items_301701__0"</span>,
+  <span class="jk">"text"</span>:        <span class="js">"# User Story: Marketplace Client Support..."</span>,
+  <span class="jk">"source_type"</span>: <span class="js">"workitem"</span>,
+  <span class="jk">"embedding"</span>:   [
+    <span class="jn"> 0.0234</span>, <span class="jn">-0.0891</span>, <span class="jn"> 0.1102</span>, <span class="jn">-0.0338</span>, <span class="jn"> 0.0567</span>, <span class="jn">-0.1245</span>, <span class="jn"> 0.0789</span>, <span class="jn"> 0.0423</span>,
     <span class="jc">... 3,064 more float32 values  (text-embedding-3-large = 3072 dims total) ...</span>
   ]
 }</pre>
@@ -385,116 +470,135 @@
         </div>
       </div>
 
+      <!-- ── Step 4: Index ── -->
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-body">
           <h3>Index</h3>
-          <p>Ensures the <code>wiki-index</code> index exists in Azure AI Search. If not, it
-             creates it with fields for <code>id</code>, <code>text</code>, <code>path</code>,
-             <code>url</code>, <code>crawled_at</code>, and the <code>embedding</code> vector
-             field configured with HNSW (Hierarchical Navigable Small World) — a fast
-             approximate nearest-neighbour algorithm optimised for high-dimensional vectors.</p>
+          <p>Ensures the <code>wiki-index</code> index exists in Azure AI Search. The schema
+             includes <code>source_type</code> (filterable/facetable string — values:
+             <code>wiki</code>, <code>code</code>, <code>test</code>, <code>workitem</code>,
+             <code>commit-diff</code>) and <code>source_tags</code> (collection field used by the
+             <code>source-boost</code> scoring profile to amplify results from a specific source
+             by 3×). Vector search uses HNSW with cosine metric. A semantic configuration
+             (<code>tigerchat-semantic</code>) enables the semantic reranker for hybrid search.</p>
           <span class="tag search">Azure AI Search</span>
-          <span class="tag">HNSW</span>
+          <span class="tag">HNSW · cosine</span>
+          <span class="tag green">semantic reranker</span>
+          <span class="tag orange">source-boost profile</span>
           <div class="payload">
-            <div class="payload-label">🗂️ index schema · wiki-index field definitions</div>
+            <div class="payload-label">🗂️ index schema · key fields (abbreviated)</div>
             <pre>{
   <span class="jk">"name"</span>: <span class="js">"wiki-index"</span>,
   <span class="jk">"fields"</span>: [
-    { <span class="jk">"name"</span>: <span class="js">"id"</span>,         <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>,            <span class="jk">"key"</span>: <span class="jn">true</span>,  <span class="jk">"filterable"</span>: <span class="jn">true</span>  },
-    { <span class="jk">"name"</span>: <span class="js">"text"</span>,       <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>,            <span class="jk">"searchable"</span>: <span class="jn">true</span>                    },
-    { <span class="jk">"name"</span>: <span class="js">"path"</span>,       <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>,            <span class="jk">"filterable"</span>: <span class="jn">true</span>, <span class="jk">"facetable"</span>: <span class="jn">true</span> },
-    { <span class="jk">"name"</span>: <span class="js">"url"</span>,        <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>                                           },
-    { <span class="jk">"name"</span>: <span class="js">"crawled_at"</span>, <span class="jk">"type"</span>: <span class="js">"Edm.String"</span>,            <span class="jk">"filterable"</span>: <span class="jn">true</span>                    },
-    { <span class="jk">"name"</span>: <span class="js">"embedding"</span>,  <span class="jk">"type"</span>: <span class="js">"Collection(Edm.Single)"</span>,
-      <span class="jk">"dimensions"</span>: <span class="jn">3072</span>,  <span class="jk">"vectorSearchProfile"</span>: <span class="js">"hnsw-profile"</span>                  }
-  ],
-  <span class="jk">"vectorSearch"</span>: {
-    <span class="jk">"algorithms"</span>: [{ <span class="jk">"name"</span>: <span class="js">"hnsw-config"</span>, <span class="jk">"kind"</span>: <span class="js">"hnsw"</span>,
-      <span class="jk">"hnswParameters"</span>: { <span class="jk">"metric"</span>: <span class="js">"cosine"</span>, <span class="jk">"m"</span>: <span class="jn">4</span> } }]
-  }
+    { <span class="jk">"name"</span>: <span class="js">"id"</span>,          <span class="jk">"key"</span>: <span class="jn">true</span>, <span class="jk">"filterable"</span>: <span class="jn">true</span>                          },
+    { <span class="jk">"name"</span>: <span class="js">"text"</span>,        <span class="jk">"searchable"</span>: <span class="jn">true</span>                                      },
+    { <span class="jk">"name"</span>: <span class="js">"path"</span>,        <span class="jk">"filterable"</span>: <span class="jn">true</span>,  <span class="jk">"facetable"</span>: <span class="jn">true</span>               },
+    { <span class="jk">"name"</span>: <span class="js">"source_type"</span>, <span class="jk">"filterable"</span>: <span class="jn">true</span>,  <span class="jk">"facetable"</span>: <span class="jn">true</span>               },
+    { <span class="jk">"name"</span>: <span class="js">"source_tags"</span>, <span class="jk">"type"</span>: <span class="js">"Collection(Edm.String)"</span>, <span class="jk">"filterable"</span>: <span class="jn">true</span> },
+    { <span class="jk">"name"</span>: <span class="js">"embedding"</span>,   <span class="jk">"dimensions"</span>: <span class="jn">3072</span>, <span class="jk">"profile"</span>: <span class="js">"hnsw-profile"</span>      }
+  ]
 }</pre>
           </div>
         </div>
       </div>
 
+      <!-- ── Step 5: Upload ── -->
       <div class="step">
         <div class="step-num">5</div>
         <div class="step-body">
           <h3>Upload</h3>
-          <p>Upserts all chunks (text + metadata + embedding vector) into Azure AI Search in
-             batches of 100. Because the operation is an upsert keyed on <code>id</code>,
-             re-running the pipeline never creates duplicates — changed pages are overwritten
-             in place. After a successful upload with zero failures, the hash manifest is
-             updated in blob storage.</p>
+          <p>Upserts all chunks into Azure AI Search in batches of
+             <strong style="color:var(--text)">200 documents</strong> using
+             <strong style="color:var(--text)">4 parallel threads</strong>. Because the operation
+             is an upsert keyed on chunk <code>id</code>, re-running the pipeline never creates
+             duplicates — changed records overwrite in place, new records are created. After a
+             successful upload with zero failures, the hash manifest is updated in blob storage.
+             If any failures occur, the manifest is intentionally <em>not</em> saved so the next
+             run retries affected documents.</p>
           <span class="tag search">Azure AI Search</span>
-          <span class="tag green">upsert</span>
+          <span class="tag green">upsert · 4 workers · batch 200</span>
           <div class="payload">
-            <div class="payload-label">📤 upsert response · per batch of 100 chunks</div>
+            <div class="payload-label">📤 upsert response · per batch of 200 chunks</div>
             <pre>{
   <span class="jk">"value"</span>: [
-    { <span class="jk">"key"</span>: <span class="js">"documentation_setup__0"</span>, <span class="jk">"status"</span>: <span class="jn">true</span>, <span class="jk">"statusCode"</span>: <span class="jn">201</span> },  <span class="jc">// new doc created</span>
-    { <span class="jk">"key"</span>: <span class="js">"documentation_setup__1"</span>, <span class="jk">"status"</span>: <span class="jn">true</span>, <span class="jk">"statusCode"</span>: <span class="jn">201</span> },  <span class="jc">// new doc created</span>
-    { <span class="jk">"key"</span>: <span class="js">"documentation_setup__2"</span>, <span class="jk">"status"</span>: <span class="jn">true</span>, <span class="jk">"statusCode"</span>: <span class="jn">200</span> },  <span class="jc">// existing doc overwritten</span>
-    <span class="jc">... up to 100 results per batch call ...</span>
+    { <span class="jk">"key"</span>: <span class="js">"wiki_WERCSmart_Wiki_Processing__0"</span>, <span class="jk">"status"</span>: <span class="jn">true</span>, <span class="jk">"statusCode"</span>: <span class="jn">201</span> },  <span class="jc">// created</span>
+    { <span class="jk">"key"</span>: <span class="js">"work_items_301701__0"</span>,            <span class="jk">"status"</span>: <span class="jn">true</span>, <span class="jk">"statusCode"</span>: <span class="jn">200</span> },  <span class="jc">// updated</span>
+    { <span class="jk">"key"</span>: <span class="js">"commit_diffs_a1b2c3d4__0"</span>,         <span class="jk">"status"</span>: <span class="jn">true</span>, <span class="jk">"statusCode"</span>: <span class="jn">201</span> },  <span class="jc">// created</span>
+    <span class="jc">... up to 200 results per batch ...</span>
   ]
 }
-<span class="jc">// 201 = created  ·  200 = updated (upsert)
-// hash manifest only saved after all batches return zero failures</span></pre>
+<span class="jc">// 201 = created  ·  200 = updated (upsert on id)
+// hash manifest saved only when all batches succeed (failed=0)</span></pre>
           </div>
         </div>
       </div>
 
     </div>
 
-    <!-- Ingestion UI settings -->
+    <!-- ── Ingestion UI settings ── -->
     <p class="section-title">Ingestion UI — Pipeline Settings</p>
     <div class="detail-card">
-      <h2>Crawl Toggle &amp; Source Selection</h2>
-      <p>The ingestion page exposes two settings that let you control exactly what runs before
-         committing to a full crawl-to-upload cycle:</p>
+      <h2>Crawl Toggle, Source Selection &amp; Selective Pickers</h2>
+      <p>The ingestion page exposes granular controls so you can target exactly what runs
+         without committing to a full crawl-to-upload cycle every time:</p>
       <div class="flow">
         <div class="flow-row">
           <div class="flow-icon">⚙️</div>
-          <div class="flow-text"><strong>Include crawling</strong> — master toggle. When ON (default), fresh content is pulled
-            from Azure DevOps before indexing. When OFF, the pipeline loads the last saved JSONL
-            snapshot from Blob Storage and re-indexes it without making any DevOps API calls.
-            Useful after index schema changes or embedding model upgrades.</div>
+          <div class="flow-text"><strong>Include crawling</strong> — master toggle. When ON (default), fresh content is
+            pulled from Azure DevOps before indexing. When OFF, the pipeline loads the last saved JSONL
+            snapshot from Blob Storage and re-processes it — useful after index schema changes or
+            model upgrades without spending API quota.</div>
         </div>
         <div class="flow-row">
           <div class="flow-icon">☑️</div>
-          <div class="flow-text"><strong>Sources to crawl</strong> — visible only when crawling is ON.
-            Three toggles: <strong>Wiki</strong>, <strong>Source Code</strong>, <strong>Test Plans</strong>.
-            Deselect a source to skip it in this run — e.g. crawl only Test Plans after adding new test
-            cases, without re-crawling all 90+ repositories.</div>
+          <div class="flow-text"><strong>Sources</strong> — four toggles: <strong>Wiki</strong>,
+            <strong>Source Code</strong>, <strong>Test Plans</strong>, <strong>Work Items</strong>.
+            Deselect any to skip it — e.g. crawl only Work Items after a sprint, without
+            re-crawling all repositories.</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-icon">📦</div>
+          <div class="flow-text"><strong>Repository picker</strong> — when Source Code is selected, a
+            searchable list of all Git repositories lets you select a subset. Leave all unchecked to
+            crawl every non-empty, non-disabled repo.</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-icon">🧪</div>
+          <div class="flow-text"><strong>Test Plan cascade</strong> — drill down from Plan → Suite →
+            individual Test Cases to crawl exactly the test scope you need.</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-icon">🗂️</div>
+          <div class="flow-text"><strong>Work Items area picker</strong> — an expandable area-path tree
+            lets you scope the Work Items crawl to specific teams or product areas, keeping the index
+            focused and avoiding unrelated backlogs.</div>
         </div>
         <div class="flow-row">
           <div class="flow-icon">💡</div>
-          <div class="flow-text">Settings are passed as query parameters to <code>GET /ingest/stream</code>
-            and override the <code>CRAWL_WIKI</code> / <code>CRAWL_CODE</code> / <code>CRAWL_TESTS</code>
-            environment variables for that run only.</div>
+          <div class="flow-text">All selections are passed as parameters to <code>GET /ingest/stream</code>
+            and override the <code>CRAWL_WIKI</code> / <code>CRAWL_CODE</code> / <code>CRAWL_TESTS</code> /
+            <code>CRAWL_WORK_ITEMS</code> environment variables for that run only.</div>
         </div>
       </div>
     </div>
 
-    <!-- Change detection -->
+    <!-- ── Change detection ── -->
     <p class="section-title">Change Detection</p>
     <div class="detail-card">
       <h2>Hash Manifest</h2>
-      <p>To avoid re-embedding unchanged content (and wasting Azure OpenAI tokens), the
-         pipeline maintains a <code>wiki_hashes.json</code> manifest in Blob Storage.
-         It maps the <code>path</code> of every crawled record — wiki page, code file, or
-         test case — to an MD5 hash of its Markdown content. All three source types share
-         the same manifest because their paths never collide
-         (<code>/Documentation/…</code>, <code>/repos/…</code>, <code>/test-cases/…</code>).</p>
+      <p>To avoid re-embedding unchanged content (and wasting Azure OpenAI tokens), the pipeline
+         maintains a <code>wiki_hashes.json</code> manifest in Blob Storage. It maps the
+         <code>path</code> of every crawled record to an MD5 hash of its Markdown content.
+         All five source types share the same manifest because their paths never collide.</p>
       <div class="flow">
         <div class="flow-row">
           <div class="flow-icon">📥</div>
-          <div class="flow-text">Load <strong>wiki_hashes.json</strong> from blob storage (empty on first run)</div>
+          <div class="flow-text">Load <strong>wiki_hashes.json</strong> from blob storage (empty dict on first run)</div>
         </div>
         <div class="flow-row">
           <div class="flow-icon">🔍</div>
-          <div class="flow-text">Hash each record's Markdown and compare to the stored hash</div>
+          <div class="flow-text">Hash each crawled record's Markdown with MD5 and compare to the stored hash</div>
         </div>
         <div class="flow-row">
           <div class="flow-icon">✓</div>
@@ -502,29 +606,27 @@
         </div>
         <div class="flow-row">
           <div class="flow-icon">⚡</div>
-          <div class="flow-text"><strong>New or changed records</strong> — chunked, embedded, and upserted</div>
+          <div class="flow-text"><strong>New or changed records</strong> — chunked, embedded, and upserted into the index</div>
         </div>
         <div class="flow-row">
           <div class="flow-icon">💾</div>
-          <div class="flow-text">Manifest saved back to blob only if upload succeeds with zero failures</div>
+          <div class="flow-text">Manifest saved back to blob only if upload completes with zero failures</div>
         </div>
       </div>
       <div class="payload" style="margin-top: 1.25rem;">
-        <div class="payload-label">🔒 wiki_hashes.json · stored in blob storage · all source types in one manifest</div>
+        <div class="payload-label">🔒 wiki_hashes.json · all five source types in one manifest</div>
         <pre>{
-  <span class="jk">"/Home"</span>:                                          <span class="js">"a3f2c1d8e4b5f6a7"</span>,
-  <span class="jk">"/Documentation/Setup"</span>:                          <span class="jh">"b7e3a2d1c9f4e8b2"</span>,  <span class="jc">// changed → will re-embed</span>
-  <span class="jk">"/repos/MyApp/src/Services/PaymentService.cs"</span>:   <span class="js">"c2a8f1b4d7e3c9a1"</span>,
-  <span class="jk">"/repos/MyApp/src/Controllers/HomeController.cs"</span>: <span class="jh">"d4b9f2e1a7c3d8f6"</span>,  <span class="jc">// changed → will re-embed</span>
-  <span class="jk">"/test-cases/12345"</span>:                              <span class="js">"e1f3b7a2d8c5e9f4"</span>,
-  <span class="jk">"/test-cases/12346"</span>:                              <span class="js">"f5a2c9e3b1d7f4a8"</span>,
-  <span class="jc">... one MD5 per record across wiki, code, and test sources ...</span>
+  <span class="jk">"/wiki/WERCSmart.Wiki/Home"</span>:                                <span class="js">"a3f2c1d8e4b5f6a7"</span>,
+  <span class="jk">"/repos/WERCSmart/src/Services/MarketplaceService.cs"</span>:    <span class="js">"c2a8f1b4d7e3c9a1"</span>,
+  <span class="jk">"/test-cases/296199"</span>:                                      <span class="js">"e1f3b7a2d8c5e9f4"</span>,
+  <span class="jk">"/work-items/301701"</span>:                                      <span class="jh">"b7e3a2d1c9f4e8b2"</span>,  <span class="jc">// changed → re-embed</span>
+  <span class="jk">"/commit-diffs/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2"</span>:  <span class="js">"d4b9f2e1a7c3d8f6"</span>,
+  <span class="jc">... one MD5 per record across all five source types ...</span>
 }
-<span class="jc">// records whose current MD5 != stored hash are chunked + embedded + upserted
-// records whose MD5 matches are skipped entirely — zero API calls</span></pre>
+<span class="jc">// records whose current MD5 != stored hash → chunked + embedded + upserted
+// records whose MD5 matches → skipped entirely, zero API calls</span></pre>
       </div>
     </div>
-
 
   </div>
 
