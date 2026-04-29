@@ -177,8 +177,8 @@ SEARCH_INDEX_NAME = os.environ.get("AZURE_SEARCH_INDEX_NAME", "wiki-index")
 
 CHUNK_SIZE        = 1000
 CHUNK_OVERLAP     = 150
-EMBED_BATCH_SIZE  = 100   # Azure OpenAI accepts up to 2048 inputs; smaller batches reduce 429s
-EMBED_CONCURRENCY = 2     # parallel workers — keep low to stay under TPM quota
+EMBED_BATCH_SIZE  = int(os.environ.get("EMBED_BATCH_SIZE",  "100"))   # override via env var
+EMBED_CONCURRENCY = int(os.environ.get("EMBED_CONCURRENCY", "2"))     # override via env var
 # Minimum pause each worker takes between successful embedding calls.
 # Formula: CONCURRENCY / (avg_call_s + DELAY_S) = RPM.
 # Override via env var — raise if your quota is higher, lower if you hit 429s:
