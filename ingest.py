@@ -103,7 +103,7 @@ CODE_EXTENSIONS = frozenset({
     # Web / Razor
     ".razor", ".html", ".htm", ".js", ".ts", ".less", ".css",
     # Data / config
-    ".json", ".xml", ".xslt",
+    ".json", ".xml", ".xslt", ".yaml", ".yml",
 })
 
 CODE_FILENAMES: frozenset[str] = frozenset()  # no special filenames for this stack

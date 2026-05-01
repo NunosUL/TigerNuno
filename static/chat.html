@@ -439,10 +439,11 @@
     .md-theme-btn:hover { background: var(--accent-glow); border-color: var(--accent); color: var(--text); }
 
     /* ── Table full-width expansion ── */
-    .message.table-expanded { max-width: 100%; }
+    /* Message widens but stays margin:auto centered; bubble fills it. */
+    .message.table-expanded { max-width: min(1400px, 95vw); }
     .message.table-expanded .bubble { max-width: 100%; }
     .message.table-expanded .sources { max-width: 100%; }
-    .message.table-expanded .md-table-wrap { overflow-x: visible; }
+    .message.table-expanded .md-table-wrap { overflow-x: auto; }
 
     /* ── Sources ── */
     .sources {

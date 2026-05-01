@@ -248,6 +248,92 @@ async def list_repos():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/repos/counts")
+async def list_repo_counts(repos: str = ""):
+    """Returns eligible file counts per repo for the selected repo IDs.
+    repos = comma-separated repo IDs (GUIDs) as returned by /api/repos.
+    Returns {"counts": {"RepoName": N, ...}, "total": N}
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed as cf_completed
+    from ingest import _API_BASE, _API_VERSION, _HEADERS, _should_index_file, CODE_MAX_FILE_BYTES
+
+    selected_ids = [r.strip() for r in (repos or "").split(",") if r.strip()]
+    if not selected_ids:
+        return {"counts": {}, "total": 0}
+
+    # Fetch all repos to resolve id→name and get defaultBranch
+    try:
+        r = req.get(
+            f"{_API_BASE}/git/repositories",
+            headers=_HEADERS,
+            params={"api-version": _API_VERSION},
+        )
+        r.raise_for_status()
+        all_repos = r.json().get("value", [])
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    sel_set = set(selected_ids)
+    target_repos = [
+        repo for repo in all_repos
+        if repo["id"] in sel_set
+        and not repo.get("isDisabled")
+        and repo.get("defaultBranch")
+    ]
+
+    def count_repo(repo: dict) -> tuple[str, int]:
+        repo_id   = repo["id"]
+        repo_name = repo["name"]
+        items: list[dict] = []
+        cont_token = None
+        while True:
+            params: dict = {
+                "api-version":    _API_VERSION,
+                "recursionLevel": "full",
+                "scopePath":      "/",
+                "versionDescriptor.version": repo["defaultBranch"].replace("refs/heads/", ""),
+                "versionDescriptor.versionType": "branch",
+                "$top": 10000,
+            }
+            if cont_token:
+                params["continuationToken"] = cont_token
+            try:
+                resp = req.get(
+                    f"{_API_BASE}/git/repositories/{repo_id}/items",
+                    headers=_HEADERS,
+                    params=params,
+                    timeout=30,
+                )
+            except Exception:
+                break
+            if not resp.ok:
+                break
+            items.extend(resp.json().get("value", []))
+            cont_token = resp.headers.get("x-ms-continuationtoken")
+            if not cont_token:
+                break
+
+        count = sum(
+            1 for item in items
+            if _should_index_file(item) and (item.get("size") or 0) <= CODE_MAX_FILE_BYTES
+        )
+        return repo_name, count
+
+    try:
+        counts: dict[str, int] = {}
+        with ThreadPoolExecutor(max_workers=min(6, len(target_repos))) as pool:
+            futs = {pool.submit(count_repo, repo): repo for repo in target_repos}
+            for fut in cf_completed(futs):
+                try:
+                    name, n = fut.result()
+                    counts[name] = n
+                except Exception:
+                    pass
+        return {"counts": counts, "total": sum(counts.values())}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/test-plans")
 async def list_test_plans():
     """Returns all test plans for the project."""

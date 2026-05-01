@@ -729,6 +729,17 @@
       color: var(--accent);
       background: var(--accent-glow);
     }
+
+    /* ── Repo file-count badge ── */
+    .repo-count {
+      margin-left: auto;
+      font-size: 0.7rem;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+    .repo-count.loaded { color: var(--accent); }
   </style>
 </head>
 <body>
@@ -993,6 +1004,10 @@
           <div class="stat-label">Unchanged</div>
         </div>
         <div class="stat highlight">
+          <div class="stat-value" id="s-code">—</div>
+          <div class="stat-label">Code Files</div>
+        </div>
+        <div class="stat highlight">
           <div class="stat-value" id="s-chunks">—</div>
           <div class="stat-label">Chunks</div>
         </div>
@@ -1013,10 +1028,6 @@
         <div class="stat">
           <div class="stat-value" id="s-wiki">—</div>
           <div class="stat-label">Wiki Pages</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value" id="s-code">—</div>
-          <div class="stat-label">Code Files</div>
         </div>
         <div class="stat">
           <div class="stat-value" id="s-tests">—</div>
@@ -1238,11 +1249,60 @@
       try {
         const data = await fetch('/api/repos').then(r => r.json());
         document.getElementById('repoLoading').style.display = 'none';
-        repoPicker.renderItems(data.repos || [], null);
+        const repos = data.repos || [];
+        repoPicker.renderItems(repos, null);
         reposLoaded = true;
         repoPicker.openBody();
+        // Async: fetch file counts for all repos and show alongside names
+        fetchRepoCounts(repos);
       } catch {
         document.getElementById('repoLoading').textContent = 'Failed to load repositories.';
+      }
+    }
+
+    async function fetchRepoCounts(repos) {
+      if (!repos.length) return;
+      const list = document.getElementById('repoList');
+      // Insert placeholder badges immediately
+      repos.forEach(repo => {
+        const item = list.querySelector(`.picker-item[data-name="${CSS.escape(repo.name)}"]`);
+        if (!item) return;
+        let badge = item.querySelector('.repo-count');
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'repo-count';
+          item.appendChild(badge);
+        }
+        badge.textContent = '…';
+      });
+      try {
+        const ids = repos.map(r => r.id).join(',');
+        const data = await fetch('/api/repos/counts?repos=' + encodeURIComponent(ids)).then(r => r.json());
+        const counts = data.counts || {};
+        repos.forEach(repo => {
+          const item = list.querySelector(`.picker-item[data-name="${CSS.escape(repo.name)}"]`);
+          if (!item) return;
+          let badge = item.querySelector('.repo-count');
+          if (!badge) {
+            badge = document.createElement('span');
+            badge.className = 'repo-count';
+            item.appendChild(badge);
+          }
+          const n = counts[repo.name];
+          if (n != null) {
+            badge.textContent = n.toLocaleString() + ' files';
+            badge.classList.add('loaded');
+          } else {
+            badge.textContent = '';
+          }
+        });
+      } catch {
+        // non-critical — counts just won't appear
+        repos.forEach(repo => {
+          const item = list.querySelector(`.picker-item[data-name="${CSS.escape(repo.name)}"]`);
+          const badge = item && item.querySelector('.repo-count');
+          if (badge) badge.textContent = '';
+        });
       }
     }
 
@@ -1687,6 +1747,7 @@
     function showSummary(s) {
       document.getElementById('s-pages').textContent    = s.pages    ?? '—';
       document.getElementById('s-skipped').textContent  = s.skipped  ?? '—';
+      document.getElementById('s-code').textContent     = s.code_count ?? '—';
       document.getElementById('s-chunks').textContent   = s.chunks   ?? '—';
       document.getElementById('s-uploaded').textContent = s.uploaded ?? '—';
       document.getElementById('s-failed').textContent   = s.failed   ?? 0;
@@ -1696,10 +1757,9 @@
         document.getElementById('f-blob').textContent = s.blob;
         document.getElementById('snapshotBlobName').textContent = s.blob;
       }
-      const hasBreakdown = s.wiki_count != null || s.code_count != null || s.test_count != null || s.wi_count != null;
+      const hasBreakdown = s.wiki_count != null || s.test_count != null || s.wi_count != null;
       if (hasBreakdown) {
         document.getElementById('s-wiki').textContent      = s.wiki_count ?? '—';
-        document.getElementById('s-code').textContent      = s.code_count ?? '—';
         document.getElementById('s-tests').textContent     = s.test_count ?? '—';
         document.getElementById('s-workitems').textContent = s.wi_count   ?? '—';
         document.getElementById('source-breakdown').style.display = 'grid';
