@@ -7,7 +7,11 @@ Run with: uvicorn app:app --reload
 """
 
 import json
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
+load_dotenv()
 
 import requests as req
 from fastapi import FastAPI, HTTPException, Request, Form
@@ -24,6 +28,14 @@ from query import answer_question, answer_question_stream
 # Password — change here if needed
 # ---------------------------------------------------------------------------
 _ACCESS_PASSWORD = "TigerWorld"
+
+# Session secret — loaded from SESSION_SECRET_KEY in .env
+_SESSION_SECRET = os.environ.get("SESSION_SECRET_KEY", "")
+if not _SESSION_SECRET:
+    raise RuntimeError(
+        "SESSION_SECRET_KEY is not set. "
+        "Add it to your .env file: SESSION_SECRET_KEY=<random hex string>"
+    )
 
 # Paths that are always public (no login required)
 _PUBLIC_PREFIXES = ("/login", "/static/")
@@ -51,7 +63,7 @@ app = FastAPI()
 # SessionMiddleware must be outermost so request.session is populated
 # before _AuthMiddleware checks it.
 app.add_middleware(_AuthMiddleware)
-app.add_middleware(SessionMiddleware, secret_key="tc-s3ssion-k3y-ti9er-w0rld-2025")
+app.add_middleware(SessionMiddleware, secret_key=_SESSION_SECRET)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
