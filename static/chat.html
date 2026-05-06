@@ -785,12 +785,12 @@
             <span class="q-chevron">▶</span>
           </div>
           <div class="q-accordion-body">
-            <button class="suggestion" data-source-types="test,workitem">For User Story 301615, which existing test cases need to be updated or created based on the acceptance criteria?</button>
-            <button class="suggestion" data-source-types="test,workitem">Based on Bug 301827 and the code changes it introduced, which test cases should be updated, re-run, or added to the regression suite?</button>
-            <button class="suggestion" data-source-types="test,workitem">Generate a test impact analysis for User Story 301701: list affected test cases, coverage gaps, and recommended new test scenarios</button>
-            <button class="suggestion" data-source-types="test,workitem">Which test cases cover the acceptance criteria of User Story 301701, and which criteria currently have no test coverage?</button>
-            <button class="suggestion" data-source-types="test">List all test cases in the Authentication test suite with their full steps and expected results</button>
-            <button class="suggestion" data-source-types="test">What are the exact test steps for the data export acceptance tests, including all preconditions?</button>
+            <button class="suggestion" data-source-types="test">Which test cases have at least one step with no expected result? List them grouped by test suite, showing the step number, the action described, and the priority of the test case — ordered by highest priority first.</button>
+            <button class="suggestion" data-source-types="test">List all test cases currently set to Manual automation status, grouped by test suite. For each include: priority, number of steps, and current state. Order by highest priority first so automation candidates are easy to identify.</button>
+            <button class="suggestion" data-source-types="test,workitem">For User Story 301701, find every test case that verifies part of its acceptance criteria. For each test case list its ID, title, suite, state, and which acceptance criteria point it covers. Then list any acceptance criteria points that no test case covers.</button>
+            <button class="suggestion" data-source-types="test">Which test cases have discussion threads where a comment mentions failure, blocked, defect, incorrect, or needs update? For each, show the test case title, suite, the comment author, date, and a summary of the concern raised.</button>
+            <button class="suggestion" data-source-types="test,workitem">Based on the files changed across all commits linked to Bug 283083, identify which test cases cover the affected components. For each test case explain whether it should be re-run, updated, or is unaffected — and why.</button>
+            <button class="suggestion" data-source-types="test">Show the complete test steps — with all shared steps expanded inline — for every test case in the Filters or Column Editor test suites. Present each step with its action and expected result in a numbered list.</button>
           </div>
         </div>
 
@@ -806,7 +806,136 @@
             <button class="suggestion">What User Stories are currently active in the Marketplace area?</button>
             <button class="suggestion">Summarise all open Bugs for the WERCSmart product</button>
             <button class="suggestion">What is the acceptance criteria for User Story 301701?</button>
-            <button class="suggestion">PFQ review for User Story 301701 — what changed in authentication, APIs, or packages?</button>
+            <button class="suggestion" data-source-types="workitem"
+              data-prompt="BUG 302475
+
+Retrieve this BUG and all of its child Tasks and Bugs (look for items listed under &quot;Children&quot; in the Linked Work Items section). Then retrieve every commit diff whose &quot;Linked Work Item&quot; field matches this BUG or any of those child IDs.
+
+STRICT RULES — read before answering:
+- Use ONLY information present in the retrieved context. Do not infer, assume, or hallucinate.
+- Only include commit diffs explicitly linked to this BUG or its direct children. Discard any commit diff whose &quot;Linked Work Item&quot; does not match those IDs.
+- For every code finding, cite the exact file path and the relevant changed lines from the diff.
+- If a section has no evidence in the retrieved diffs, write exactly: Not applicable — no relevant change found in the diffs.
+- Do not include code snippets or diff lines in any section.
+
+Produce a structured PFQ report with the sections below.
+
+---
+
+### Summary
+| Field | Value |
+|-------|-------|
+| Work Item | |
+| Title | |
+| State | |
+| Area Path | |
+| Child Tasks / Bugs | (list IDs and titles) |
+| Commits analysed | (list short SHAs and their one-line messages) |
+| Files changed | (list every file path found across all retrieved diffs, one per line) |
+
+---
+
+### 2.1 Authentication / Authorization
+New or changed auth checks, roles, SSO tokens, or permission guards?
+For each finding write a paragraph block with: **File:** … | **Lines changed:** … | **Description:** …
+
+### 3.1 API Changes
+Which controller actions or endpoints changed? What changed in the request signature, response shape, or HTTP method?
+For each finding write a paragraph block with: **File:** … | **Endpoint / Method:** … | **What changed:** …
+
+### 3.2 Database Schema
+New tables, columns, indexes, or foreign keys?
+For each finding write a paragraph block with: **File:** … | **Object:** … | **Change description:** …
+
+### 3.3 Database Scripts
+Migrations, seed scripts, stored procedures, or SQL files?
+For each finding write a paragraph block with: **File:** … | **Type:** … | **Description:** …
+
+### 5.1 Sensitive Data
+New PII fields collected, stored, logged, or returned (names, emails, IDs, health data, financial data)?
+For each finding write a paragraph block with: **File:** … | **Field / Property:** … | **Context:** …
+
+### 5.2 Input / Output Validation
+New or changed validation rules on API parameters, form fields, or model properties?
+For each finding write a paragraph block with: **File:** … | **Field:** … | **Validation rule added or changed:** …
+
+### 6.1 Create / Edit / Delete Operations
+New CRUD operations — which entity, which table, callable by whom?
+For each finding write a paragraph block with: **File:** … | **Operation:** … | **Entity / Table:** … | **Access control:** …
+
+### 7.1 Encryption / Hashing
+New hashing, encryption, key derivation, or secret handling?
+For each finding write a paragraph block with: **File:** … | **Lines:** … | **Description:** …
+
+### 8.1 Third-Party Packages
+Packages added, removed, or version-changed (check .csproj files in the diffs)?
+| Package | Before | After | File |
+|---------|--------|-------|------|">PFQ Data about a BUG work item</button>
+            <button class="suggestion" data-source-types="workitem"
+              data-prompt="USER STORY 301701
+
+Retrieve this USER STORY and all of its child Tasks and Bugs (look for items listed under &quot;Children&quot; in the Linked Work Items section). Then retrieve every commit diff whose &quot;Linked Work Item&quot; field matches this USER STORY or any of those child IDs.
+
+STRICT RULES — read before answering:
+- Use ONLY information present in the retrieved context. Do not infer, assume, or hallucinate.
+- Only include commit diffs explicitly linked to this USER STORY or its direct children. Discard any commit diff whose &quot;Linked Work Item&quot; does not match those IDs.
+- For every code finding, cite the exact file path and the relevant changed lines from the diff.
+- If a section has no evidence in the retrieved diffs, description, or acceptance criteria, write exactly: Not applicable — no relevant change found in the diffs.
+- Do not include code snippets or diff lines in any section.
+
+Produce a structured PFQ report with the sections below.
+
+---
+
+### Summary
+| Field | Value |
+|-------|-------|
+| Work Item | |
+| Title | |
+| State | |
+| Area Path | |
+| Child Tasks / Bugs | (list IDs and titles) |
+| Commits analysed | (list short SHAs and their one-line messages) |
+| Files changed | (list every file path found across all retrieved diffs, one per line) |
+
+---
+
+### 2.1 Authentication / Authorization
+New or changed auth checks, roles, SSO tokens, or permission guards?
+For each finding write a paragraph block with: **File:** … | **Lines changed:** … | **Description:** …
+
+### 3.1 API Changes
+Which controller actions or endpoints changed? What changed in the request signature, response shape, or HTTP method?
+For each finding write a paragraph block with: **File:** … | **Endpoint / Method:** … | **What changed:** …
+
+### 3.2 Database Schema
+New tables, columns, indexes, or foreign keys?
+For each finding write a paragraph block with: **File:** … | **Object:** … | **Change description:** …
+
+### 3.3 Database Scripts
+Migrations, seed scripts, stored procedures, or SQL files?
+For each finding write a paragraph block with: **File:** … | **Type:** … | **Description:** …
+
+### 5.1 Sensitive Data
+New PII fields collected, stored, logged, or returned (names, emails, IDs, health data, financial data)?
+For each finding write a paragraph block with: **File:** … | **Field / Property:** … | **Context:** …
+
+### 5.2 Input / Output Validation
+New or changed validation rules on API parameters, form fields, or model properties?
+For each finding write a paragraph block with: **File:** … | **Field:** … | **Validation rule added or changed:** …
+
+### 6.1 Create / Edit / Delete Operations
+New CRUD operations — which entity, which table, callable by whom?
+For each finding write a paragraph block with: **File:** … | **Operation:** … | **Entity / Table:** … | **Access control:** …
+
+### 7.1 Encryption / Hashing
+New hashing, encryption, key derivation, or secret handling?
+For each finding write a paragraph block with: **File:** … | **Lines:** … | **Description:** …
+
+### 8.1 Third-Party Packages
+Packages added, removed, or version-changed (check .csproj files in the diffs)?
+| Package | Before | After | File |
+|---------|--------|-------|------|">PFQ Data about a USER STORY work item</button>
             <button class="suggestion" data-source-types="workitem"
               data-prompt="Based on work item 300340, extract and present the following in three clearly labelled sections:
 

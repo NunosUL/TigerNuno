@@ -294,8 +294,8 @@
       </div>
     </div>
     <p style="font-size:0.78rem;color:var(--muted);margin-bottom:2.5rem;line-height:1.6;">
-      Blob Storage holds two things: a <code>wiki_ORG_PROJECT.jsonl</code> snapshot overwritten on each crawl,
-      and a <code>wiki_hashes.json</code> manifest that tracks which records have changed to avoid
+      Blob Storage holds two things: a <code>rag_ORG_PROJECT.jsonl</code> snapshot overwritten on each crawl,
+      and a <code>rag_hashes.json</code> manifest that tracks which records have changed to avoid
       re-embedding unchanged content. Path prefixes guarantee no collisions across sources:
       <code>/wiki/…</code> · <code>/repos/…</code> · <code>/test-cases/…</code> · <code>/work-items/…</code> · <code>/commit-diffs/…</code>
     </p>
@@ -324,12 +324,15 @@
               and formats each test case as structured Markdown with a steps table, plan/suite context,
               discussion comments, and tags.</li>
             <li><strong style="color:var(--text);">📋 Work Items</strong> — fetches Epics, Features,
-              User Stories, Tasks, and Bugs via per-type WIQL queries (one per type to stay under the
+              User Stories, Tasks, Bugs, and Change Requests via per-type WIQL queries (one per type to stay under the
               20,000-item limit). Each record includes description, acceptance criteria, repro steps,
               linked work items (parent/children/related), discussion comments, code attachments,
               and area-path / iteration metadata. Supports selective crawl by area path tree.</li>
             <li><strong style="color:var(--text);">🔀 Commit Diffs</strong> — automatically triggered for
               Bugs and Tasks that have linked git commits (via <code>ArtifactLink</code> relations).
+              User Stories and Bugs also receive commits propagated up from their child Tasks and Bugs —
+              so even if a User Story or Bug has no direct commit link, its children's commits are merged
+              in before diff generation.
               For each linked commit SHA, fetches the changed files at both commit and parent SHA,
               then generates a unified diff using Python's <code>difflib</code>.
               NuGet package changes in <code>.csproj</code> files are extracted into a before/after table.
@@ -442,8 +445,8 @@
         <div class="step-body">
           <h3>Embed</h3>
           <p>Each chunk's text is sent to the Azure OpenAI embeddings API in batches of
-             <strong style="color:var(--text)">200 chunks</strong> using
-             <strong style="color:var(--text)">3 parallel workers</strong> with a 0.5 s
+             <strong style="color:var(--text)">100 chunks</strong> using
+             <strong style="color:var(--text)">2 parallel workers</strong> with a 0.5 s
              inter-batch delay to stay within the Azure OpenAI S0 quota (~60 RPM).
              <code>text-embedding-3-large</code> produces a 3,072-dimensional vector capturing
              semantic meaning. Rate-limit (429) errors trigger automatic retry with exponential
@@ -454,7 +457,7 @@
           </div>
           <span class="tag azure">Azure OpenAI</span>
           <span class="tag">text-embedding-3-large · 3072 dims</span>
-          <span class="tag">batch 200 · 3 workers</span>
+          <span class="tag">batch 100 · 2 workers</span>
           <div class="payload">
             <div class="payload-label">⚡ embedded chunk · 3072-dimensional vector added</div>
             <pre>{
@@ -588,13 +591,13 @@
     <div class="detail-card">
       <h2>Hash Manifest</h2>
       <p>To avoid re-embedding unchanged content (and wasting Azure OpenAI tokens), the pipeline
-         maintains a <code>wiki_hashes.json</code> manifest in Blob Storage. It maps the
+         maintains a <code>rag_hashes.json</code> manifest in Blob Storage. It maps the
          <code>path</code> of every crawled record to an MD5 hash of its Markdown content.
          All five source types share the same manifest because their paths never collide.</p>
       <div class="flow">
         <div class="flow-row">
           <div class="flow-icon">📥</div>
-          <div class="flow-text">Load <strong>wiki_hashes.json</strong> from blob storage (empty dict on first run)</div>
+          <div class="flow-text">Load <strong>rag_hashes.json</strong> from blob storage (empty dict on first run)</div>
         </div>
         <div class="flow-row">
           <div class="flow-icon">🔍</div>
@@ -614,7 +617,7 @@
         </div>
       </div>
       <div class="payload" style="margin-top: 1.25rem;">
-        <div class="payload-label">🔒 wiki_hashes.json · all five source types in one manifest</div>
+        <div class="payload-label">🔒 rag_hashes.json · all five source types in one manifest</div>
         <pre>{
   <span class="jk">"/wiki/WERCSmart.Wiki/Home"</span>:                                <span class="js">"a3f2c1d8e4b5f6a7"</span>,
   <span class="jk">"/repos/WERCSmart/src/Services/MarketplaceService.cs"</span>:    <span class="js">"c2a8f1b4d7e3c9a1"</span>,

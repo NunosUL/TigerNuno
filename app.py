@@ -10,16 +10,73 @@ import json
 from pathlib import Path
 
 import requests as req
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, Request, Form
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel
 
 from ingest import run_pipeline
 from query import answer_question, answer_question_stream
 
+# ---------------------------------------------------------------------------
+# Password — change here if needed
+# ---------------------------------------------------------------------------
+_ACCESS_PASSWORD = "TigerWorld"
+
+# Paths that are always public (no login required)
+_PUBLIC_PREFIXES = ("/login", "/static/")
+
+
+class _AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if any(path == p or path.startswith(p) for p in _PUBLIC_PREFIXES):
+            return await call_next(request)
+        if not request.session.get("authenticated"):
+            # API / SSE calls: return 401 JSON instead of redirecting
+            if path.startswith("/api/") or path.startswith("/ingest/"):
+                return JSONResponse({"detail": "Not authenticated"}, status_code=401)
+            return RedirectResponse(url="/login", status_code=302)
+        return await call_next(request)
+
+
+# ---------------------------------------------------------------------------
+# App + middleware
+# ---------------------------------------------------------------------------
 app = FastAPI()
+
+# Middleware added LAST = outermost = runs first on each request.
+# SessionMiddleware must be outermost so request.session is populated
+# before _AuthMiddleware checks it.
+app.add_middleware(_AuthMiddleware)
+app.add_middleware(SessionMiddleware, secret_key="tc-s3ssion-k3y-ti9er-w0rld-2025")
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+# ---------------------------------------------------------------------------
+# Auth routes
+# ---------------------------------------------------------------------------
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page():
+    return Path("static/login.html").read_text(encoding="utf-8")
+
+
+@app.post("/login")
+async def login_submit(request: Request, password: str = Form(...)):
+    if password == _ACCESS_PASSWORD:
+        request.session["authenticated"] = True
+        return RedirectResponse(url="/", status_code=302)
+    return RedirectResponse(url="/login?error=1", status_code=302)
+
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=302)
 
 
 # ---------------------------------------------------------------------------

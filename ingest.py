@@ -1804,6 +1804,43 @@ def _crawl_work_items(selected_area_paths: list[str] | None = None):
             except Exception:
                 dev_info_map[wid] = {"commits": [], "branches": []}
 
+    # ── Enrich User Stories and Bugs with commits from their child Tasks / Bugs ─
+    # User Stories and Bugs rarely have ArtifactLinks directly; their child
+    # Tasks/Bugs do.  After dev_info_map is populated for Bugs+Tasks, propagate
+    # commits upward so the parent document also contains commit diffs.
+    _CHILD_REL      = "System.LinkTypes.Hierarchy-Forward"
+    _wi_id_re       = re.compile(r"/workItems/(\d+)$", re.IGNORECASE)
+    _ENRICH_TYPES   = {"User Story", "Bug"}
+    enriched_count  = 0
+    for wi in work_items_all:
+        if wi.get("fields", {}).get("System.WorkItemType") not in _ENRICH_TYPES:
+            continue
+        parent_id = wi.get("id")
+        if not parent_id:
+            continue
+        child_ids = []
+        for rel in (wi.get("relations") or []):
+            if rel.get("rel") != _CHILD_REL:
+                continue
+            m = _wi_id_re.search(rel.get("url", ""))
+            if m:
+                child_ids.append(int(m.group(1)))
+        if not child_ids:
+            continue
+        existing   = dev_info_map.get(parent_id) or {"commits": [], "branches": []}
+        known_shas = {c.get("commitIdFull") for c in existing.get("commits", [])}
+        for cid in child_ids:
+            for commit in (dev_info_map.get(cid) or {}).get("commits", []):
+                sha = commit.get("commitIdFull", "")
+                if sha and sha not in known_shas:
+                    known_shas.add(sha)
+                    existing.setdefault("commits", []).append(commit)
+        if existing.get("commits"):
+            dev_info_map[parent_id] = existing
+            enriched_count += 1
+    if enriched_count:
+        yield "event", f"[WorkItems] Enriched {enriched_count} User Story/Bug item(s) with commits from child Tasks/Bugs"
+
     # Generate commit diff records — one per unique commit SHA, across all work items
     if CRAWL_COMMIT_DIFFS:
         seen_diff_shas: set[str] = set()

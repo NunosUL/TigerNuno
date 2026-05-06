@@ -15,3 +15,5 @@ azure-search-documents>=11.4.0
 # Web server
 fastapi>=0.115.0
 uvicorn>=0.30.0
+python-multipart>=0.0.9
+itsdangerous>=2.2.0
