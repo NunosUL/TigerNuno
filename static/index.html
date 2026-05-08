@@ -91,6 +91,29 @@
     #startBtn:active:not(:disabled) { transform: scale(0.98); }
     #startBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    #cancelBtn {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      width: 100%;
+      padding: 0.9rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border: 1px solid var(--error);
+      border-radius: 10px;
+      background: var(--error-glow);
+      color: var(--error);
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+      margin-bottom: 2.5rem;
+    }
+    #cancelBtn.visible {
+      display: flex;
+    }
+    #cancelBtn:hover { background: rgba(248,81,73,0.35); box-shadow: 0 0 20px var(--error-glow); }
+    #cancelBtn:active { transform: scale(0.98); }
+
     .btn-icon { font-size: 1.1rem; }
 
     /* ── Steps pipeline ── */
@@ -793,6 +816,31 @@
           </label>
         </div>
 
+        <!-- Wiki picker — shown only when Wiki is checked -->
+        <div class="picker-panel hidden" id="wikiPicker">
+          <div class="picker-header" id="wikiPickerHeader">
+            <div class="picker-header-left">
+              <span class="picker-title">Wikis</span>
+              <span class="picker-badge" id="wikiCountBadge"></span>
+            </div>
+            <span class="picker-chevron" id="wikiChevron">▼</span>
+          </div>
+          <div class="picker-body" id="wikiPickerBody">
+            <div class="picker-search-wrap">
+              <span class="picker-search-icon">🔍</span>
+              <input class="picker-search" id="wikiSearch" placeholder="Filter wikis…" autocomplete="off">
+            </div>
+            <div class="picker-actions">
+              <button class="picker-action-btn" id="wikiSelectAll">Select all</button>
+              <button class="picker-action-btn" id="wikiDeselectAll">Deselect all</button>
+            </div>
+            <div class="picker-list" id="wikiList">
+              <div class="picker-loading" id="wikiLoading">Loading wikis…</div>
+            </div>
+            <div class="picker-validation" id="wikiValidation">Select at least one wiki to crawl.</div>
+          </div>
+        </div>
+
         <!-- Repo picker — shown only when Source Code is checked -->
         <div class="picker-panel hidden" id="repoPicker">
           <div class="picker-header" id="repoPickerHeader">
@@ -954,6 +1002,9 @@
     <button id="startBtn">
       <span class="btn-icon">⚡</span> Start Ingestion
     </button>
+    <button id="cancelBtn">
+      <span class="btn-icon">✕</span> Cancel Ingestion
+    </button>
 
     <!-- Pipeline pills -->
     <div class="pipeline">
@@ -1049,6 +1100,7 @@
 
   <script>
     const btn       = document.getElementById('startBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
     const logEl     = document.getElementById('log');
     const summaryEl = document.getElementById('summary');
     const STEPS     = ['crawl', 'chunk', 'embed', 'index', 'upload'];
@@ -1088,6 +1140,7 @@
       const on = crawlToggle.checked;
       sourcesRow.classList.toggle('hidden', !on);
       if (!on) {
+        setPanel('wikiPicker',      false);
         setPanel('repoPicker',      false);
         setPanel('testPicker',      false);
         setPanel('workItemsPicker', false);
@@ -1142,6 +1195,7 @@
       const lbl = document.getElementById(lblId);
       cb.addEventListener('change', () => {
         lbl.classList.toggle('active', cb.checked);
+        if (cbId === 'srcWiki')      { setPanel('wikiPicker', cb.checked); if (cb.checked) loadWikis(); }
         if (cbId === 'srcCode')      setPanel('repoPicker',      cb.checked);
         if (cbId === 'srcTests')     setPanel('testPicker',      cb.checked);
         if (cbId === 'srcWorkItems') setPanel('workItemsPicker', cb.checked);
@@ -1231,6 +1285,30 @@
       }
 
       return { renderItems, getChecked, updateBadge, openBody: () => { body.classList.add('open'); chevron.classList.add('open'); } };
+    }
+
+    // ── Wiki picker ───────────────────────────────────────────────────────────
+    const wikiPicker = makePicker({
+      headerId: 'wikiPickerHeader', bodyId: 'wikiPickerBody', chevronId: 'wikiChevron',
+      searchId: 'wikiSearch', listId: 'wikiList', badgeId: 'wikiCountBadge',
+      selectAllId: 'wikiSelectAll', deselectAllId: 'wikiDeselectAll', dataKey: 'name',
+    });
+
+    let wikisLoaded = false;
+
+    async function loadWikis() {
+      if (wikisLoaded) return;
+      document.getElementById('wikiLoading').style.display = 'block';
+      try {
+        const data = await fetch('/api/wikis').then(r => r.json());
+        document.getElementById('wikiLoading').style.display = 'none';
+        const wikis = data.wikis || [];
+        wikiPicker.renderItems(wikis, null);
+        wikisLoaded = true;
+        wikiPicker.openBody();
+      } catch {
+        document.getElementById('wikiLoading').textContent = 'Failed to load wikis.';
+      }
     }
 
     // ── Repo picker ───────────────────────────────────────────────────────────
@@ -1772,6 +1850,18 @@
       const codeChecked  = document.getElementById('srcCode').checked;
       const testsChecked = document.getElementById('srcTests').checked;
 
+      // Validate: wiki requires ≥1 wiki selected
+      const wikiChecked = document.getElementById('srcWiki').checked;
+      if (crawlToggle.checked && wikiChecked) {
+        if (!wikiPicker.getChecked().length) {
+          document.getElementById('wikiValidation').classList.add('visible');
+          document.getElementById('wikiPickerBody').classList.add('open');
+          document.getElementById('wikiChevron').classList.add('open');
+          return;
+        }
+        document.getElementById('wikiValidation').classList.remove('visible');
+      }
+
       // Validate: code requires ≥1 repo
       if (crawlToggle.checked && codeChecked) {
         const sel = repoPicker.getChecked();
@@ -1822,17 +1912,19 @@
       resetUI();
       startTimer();
       btn.disabled = true;
-      btn.innerHTML = '<span class="btn-icon">⏳</span> Running…';
+      btn.style.display = 'none';
+      cancelBtn.classList.add('visible');
 
       const selectedRepos  = crawlToggle.checked && codeChecked       ? repoPicker.getChecked()        : [];
       const selectedPlans  = crawlToggle.checked && testsChecked       ? planPicker.getChecked()        : [];
       const selectedSuites = crawlToggle.checked && testsChecked       ? getCheckedIds('suiteList')     : [];
       const selectedTcs    = crawlToggle.checked && testsChecked       ? getCheckedIds('tcList')        : [];
       const selectedAreas  = crawlToggle.checked && workItemsChecked   ? getCheckedAreas()              : [];
+      const selectedWikis  = crawlToggle.checked && wikiChecked        ? wikiPicker.getChecked()        : [];
 
       const params = new URLSearchParams({
         crawl:       crawlToggle.checked,
-        wiki:        document.getElementById('srcWiki').checked,
+        wiki:        wikiChecked,
         code:        codeChecked,
         tests:       testsChecked,
         work_items:  workItemsChecked,
@@ -1841,14 +1933,27 @@
         suites:      selectedSuites.join(','),
         tcs:         selectedTcs.join(','),
         areas:       selectedAreas.join(','),
+        wikis:       selectedWikis.join(','),
       });
 
       const es = new EventSource('/ingest/stream?' + params.toString());
 
+      cancelBtn.onclick = () => {
+        es.close();
+        addLog('Ingestion cancelled.', 'error');
+        STEPS.forEach(s => {
+          const pill = document.getElementById(`pill-${s}`);
+          if (pill.classList.contains('active')) setPill(s, 'error');
+        });
+        finishRun();
+      };
+
       function finishRun() {
         stopTimer();
         btn.disabled = false;
+        btn.style.display = '';
         btn.innerHTML = '<span class="btn-icon">⚡</span> Start Ingestion';
+        cancelBtn.classList.remove('visible');
       }
 
       es.onmessage = e => {

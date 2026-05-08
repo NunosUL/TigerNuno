@@ -151,6 +151,7 @@ async def ingest_stream(
     suites:  str = "",  # comma-separated suite IDs
     tcs:     str = "",  # comma-separated test case IDs
     areas:   str = "",  # comma-separated area paths
+    wikis:   str = "",  # comma-separated wiki names
 ):
     """Server-Sent Events endpoint — streams pipeline progress to the browser."""
     selected_repos       = [r.strip() for r in repos.split(",")  if r.strip()] if repos  else []
@@ -158,6 +159,7 @@ async def ingest_stream(
     selected_suite_ids   = [int(x)   for x in suites.split(",") if x.strip()] if suites else []
     selected_tc_ids      = [int(x)   for x in tcs.split(",")    if x.strip()] if tcs    else []
     selected_area_paths  = [a.strip() for a in areas.split(",") if a.strip()] if areas  else []
+    selected_wiki_names  = [w.strip() for w in wikis.split(",") if w.strip()] if wikis  else []
 
     def generate():
         for event in run_pipeline(
@@ -171,6 +173,7 @@ async def ingest_stream(
             selected_suite_ids=selected_suite_ids or None,
             selected_tc_ids=selected_tc_ids       or None,
             selected_area_paths=selected_area_paths or None,
+            selected_wiki_names=selected_wiki_names or None,
         ):
             yield f"data: {json.dumps(event)}\n\n"
         yield "data: {\"step\": \"__done__\"}\n\n"
@@ -295,10 +298,22 @@ async def area_work_item_counts(areas: str = ""):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/wikis")
+async def list_wikis():
+    """Returns all wikis (project + code wikis) for the wiki picker."""
+    from ingest import _list_all_wikis
+    try:
+        wikis = _list_all_wikis()
+        # Use name as the id so the picker checkbox value == name,
+        # which is what ingest.py's selected_wiki_names filter expects.
+        return {"wikis": [{"id": w["name"], "name": w["name"]} for w in wikis]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/repos")
 async def list_repos():
     """Returns all non-disabled, non-empty Git repositories for the repo picker."""
-    import base64, requests as req
     from ingest import ORG, PROJECT, _API_BASE, _API_VERSION, _HEADERS
     try:
         r = req.get(

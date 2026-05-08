@@ -2247,6 +2247,7 @@ def run_pipeline(
     selected_suite_ids: list[int] | None = None,
     selected_tc_ids: list[int] | None = None,
     selected_area_paths: list[str] | None = None,
+    selected_wiki_names: list[str] | None = None,
 ) -> Generator[dict, None, None]:
     """
     Runs the full pipeline, yielding SSE-ready event dicts:
@@ -2312,6 +2313,9 @@ def run_pipeline(
                 yield event("crawl", "active", f"[Wiki] Discovering all wikis in {ORG}/{PROJECT}…")
                 try:
                     all_wikis = _list_all_wikis()
+                    # Filter to only selected wikis if the picker provided a list
+                    if selected_wiki_names:
+                        all_wikis = [w for w in all_wikis if w.get("name") in selected_wiki_names]
                 except Exception as exc:
                     all_wikis = []
                     yield event("crawl", "active", f"[Wiki] Could not list wikis: {exc} — skipping")
